@@ -1,10 +1,25 @@
-<p>Encircle brings the Circle to Search way of working to any Android phone, without the search. Invoke it like an assistant, and the screen freezes so you can pick exactly what you need.</p>
-<ul>
-<li><b>Smart text selection:</b> tap for a word, again for the sentence, again for the paragraph. Swipe like a highlighter, swipe diagonally for a whole paragraph, or circle anything.</li>
-<li><b>Links, e-mail addresses, phone numbers and IBANs</b> are underlined and selected with one tap, even when they wrap over two lines.</li>
-<li><b>All common barcodes:</b> QR, Data Matrix, Aztec, PDF417, EAN/UPC, Code 128 and more. Connect to Wi-Fi, save contacts, add events, open links.</li>
-<li><b>Clean copies</b> with reflowed lines and no stray hyphens.</li>
-<li><b>Material You</b> colours and lively animations.</li>
-</ul>
-<p><b>Private by design:</b> everything runs on the device and the app has no internet permission.</p>
-<p>Note: text recognition uses Google ML Kit, which is free to use but not open source. The user interface is currently in German.</p>
+Encircle makes your whole screen selectable. Call it up and the screen freezes: tap, swipe or circle what you need, then copy, share or open it. No search, no account, no internet.
+
+SMART SELECTION
+• Tap for a word, tap again for the sentence, once more for the whole paragraph
+• Swipe over text like a highlighter, or diagonally across a paragraph
+• Circle anything, including parts of images to share
+• Handles for fine-tuning
+• Copied text is reflowed into clean paragraphs, without stray hyphens
+
+LINKS, ADDRESSES AND NUMBERS
+Links, e-mail addresses, phone numbers and IBANs are recognized and underlined, even when they wrap over two lines or are written as "name (at) example (dot) org". One tap selects all of it and offers the right action: open the link, write an e-mail, call, copy the IBAN.
+
+EVERY COMMON CODE
+QR, Micro QR, Data Matrix, Aztec, PDF417, EAN, UPC, Code 128 and more. Wi-Fi codes connect you right away, contact cards go to your contacts, events to your calendar.
+
+BEAUTIFUL AND FAST
+Material You in your wallpaper's colours, light and dark, with lively animations. The frozen screen appears instantly; text and codes are recognized in parallel.
+
+PRIVATE BY DESIGN
+Everything runs on your device. Encircle has no internet permission and cannot send anything. No ads, no tracking, no account. Encircle is open source (Apache 2.0): github.com/Maxi2555/encircle
+
+SETTING IT UP
+Android only starts apps like this as the digital assistant. Open Encircle after installing and tap "Assistent auswählen" (choose assistant). Then start Encircle by long-pressing home or with your device's assistant gesture. The app walks you through what applies to your phone.
+
+Notes: The user interface is in German for now. Text recognition uses Google ML Kit, running offline on the device. Apps that block screenshots (such as banking apps) cannot be read.

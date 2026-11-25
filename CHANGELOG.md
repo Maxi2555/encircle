@@ -4,6 +4,22 @@ All notable changes to Encircle are documented here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Added
+
+- Phone numbers, e-mail addresses and links are recognized across line breaks, including long links broken mid-word.
+- Store listing graphics and texts in German and English (`fastlane/metadata`).
+
+### Changed
+
+- Code badges appear together with the main animation and are placed so they never cover recognized text.
+- IBANs are shown in groups of four in the bottom bar.
+- Refreshed app icon: the ring now opens towards the spark.
+
+### Fixed
+
+- IBANs that wrap over two lines were not recognized.
+- A line of digits was split from its paragraph because its text box is shorter than a line with ascenders and descenders.
+
 ## [0.1.0] - 2026-11-25
 
 First public release.

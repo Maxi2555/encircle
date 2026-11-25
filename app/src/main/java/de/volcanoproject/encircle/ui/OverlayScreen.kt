@@ -656,7 +656,9 @@ private const val OUTCOME_DRAG = 2
 @Composable
 private fun CodeBadges(c: OverlayController) {
     val codes = c.codes
-    if (codes.isEmpty()) return
+    // Badges appear with the main wave, once text is known too, so they can be placed clear of it.
+    if (codes.isEmpty() || c.analyzing) return
+    val words = c.layout.words
     val density = LocalDensity.current
     val safeTop = WindowInsets.statusBars.getTop(density) + with(density) { 8.dp.roundToPx() }
     val gap = with(density) { 12.dp.roundToPx() }
@@ -676,23 +678,30 @@ private fun CodeBadges(c: OverlayController) {
             val br = c.toView(code.bounds.bottomRight)
             Rect(tl, br).inflate(gap.toFloat())
         }
+        // Recognized text in view space: a badge above or below a code must not hide words.
+        val text = words.map { w -> Rect(c.toView(w.box.topLeft), c.toView(w.box.bottomRight)) }
         val taken = ArrayList<Rect>()
         layout(width, height) {
             placeables.forEachIndexed { i, p ->
                 val box = outlines[i]
                 val x = (box.center.x.roundToInt() - p.width / 2).coerceIn(gap, (width - p.width - gap).coerceAtLeast(gap))
+                val onCode = box.bottom.roundToInt() - p.height - gap * 2 // inside its own code, near the bottom
                 val candidates = listOf(
                     box.top.roundToInt() - p.height - gap / 2, // above
                     box.bottom.roundToInt() + gap / 2, // below
-                    box.top.roundToInt() + gap * 2, // on top of its own code
                 )
                 fun rectAt(y: Int) = Rect(x.toFloat(), y.toFloat(), (x + p.width).toFloat(), (y + p.height).toFloat())
-                val y = candidates.firstOrNull { y ->
+                fun fits(y: Int, avoidText: Boolean): Boolean {
                     val r = rectAt(y)
-                    y >= safeTop && y + p.height <= bottomLimit &&
+                    return y >= safeTop && y + p.height <= bottomLimit &&
                         outlines.indices.none { j -> j != i && outlines[j].overlaps(r) } &&
-                        taken.none { it.overlaps(r) }
-                } ?: candidates.last()
+                        taken.none { it.overlaps(r) } &&
+                        (!avoidText || text.none { it.overlaps(r) })
+                }
+                val y = candidates.firstOrNull { fits(it, avoidText = true) }
+                    ?: onCode.takeIf { fits(it, avoidText = false) }
+                    ?: candidates.firstOrNull { fits(it, avoidText = false) }
+                    ?: onCode
                 taken += rectAt(y)
                 p.place(x, y)
             }
@@ -887,7 +896,7 @@ private fun barTexts(c: OverlayController): Pair<String, String> {
                 !c.layout.isEmpty -> "Tippe auf ein Wort, markiere Text oder kreise etwas ein"
                 else -> "Kein Text erkannt · Kreise einen Bereich ein"
             }
-            is Selection.Words -> c.selectedEntity()?.let { e -> entityTitle(e.kind) to e.value.removePrefix("https://") } ?: run {
+            is Selection.Words -> c.selectedEntity()?.let { e -> entityTitle(e.kind) to entityDisplay(e) } ?: run {
                 val n = s.ids.size
                 (if (n == 1) "Text · 1 Wort" else "Text · $n Wörter") to
                     c.layout.textOf(s.ids).replace('\n', ' ').take(400)
@@ -897,6 +906,13 @@ private fun barTexts(c: OverlayController): Pair<String, String> {
         }
     }
     return (c.feedback ?: pair.first) to pair.second
+}
+
+/** Readable form for the bar: links without the scheme, IBANs in groups of four. */
+private fun entityDisplay(e: TextEntity): String = when (e.kind) {
+    EntityKind.Link -> e.value.removePrefix("https://")
+    EntityKind.Iban -> e.value.chunked(4).joinToString(" ")
+    else -> e.value
 }
 
 private fun entityTitle(k: EntityKind) = when (k) {

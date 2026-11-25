@@ -37,8 +37,10 @@ object EntityFinder {
     private val BARE_URL = Regex(
         """(?i)(?<![\w.@/:%+-])((?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+)([a-z]{2,24})\b(?::\d{2,5})?(?:/$URL_CHAR*)?""",
     )
-    private val PHONE = Regex("""(?<![\w+/.,])(?:\+|\(\+?|0)[\d ()/.\-–]{5,24}\d(?![\d,.]?\d)""")
-    private val IBAN = Regex("""\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,3})?\b""")
+    // A line break may stand where a space would, when a number wraps.
+    private val PHONE = Regex("""(?<![\w+/.,])(?:\+|\(\+?|0)[\d \n()/.\-–]{5,24}\d(?![\d,.]?\d)""")
+    // Groups are separated by a space, or by a line break where the IBAN wraps.
+    private val IBAN = Regex("""\b[A-Z]{2}\d{2}(?:[ \n]?[A-Z0-9]{4}){2,7}(?:[ \n]?[A-Z0-9]{1,3})?\b""")
     private val DATE = Regex("""\d{1,2}\.\d{1,2}\.\d{2,4}""")
 
     /** Top-level domains that are common enough to accept without "www." or "https://". */
@@ -82,7 +84,7 @@ object EntityFinder {
             if (free(s, e)) out += EntityMatch(EntityKind.Link, withScheme(text.substring(s, e)), s, e)
         }
         for (m in IBAN.findAll(text)) {
-            val compact = m.value.replace(" ", "")
+            val compact = m.value.filterNot { it.isWhitespace() }
             if (compact.length in 15..34 && ibanValid(compact) && free(m.range.first, m.range.last + 1)) {
                 out += EntityMatch(EntityKind.Iban, compact, m.range.first, m.range.last + 1)
             }
@@ -119,6 +121,8 @@ object EntityFinder {
                         when {
                             prev.line == w.line -> " "
                             continuesUrl(prev.text, w.text) -> ""
+                            LayoutBuilder.belongTogether(prev.text, w.text) -> ""
+                            isForcedBreak(layout, prev, w) -> ""
                             else -> "\n"
                         },
                     )
@@ -138,6 +142,23 @@ object EntityFinder {
             }
         }
         return result
+    }
+
+    /**
+     * A link too long for its line is broken anywhere, even mid-word ("kraterrand.exam" / "ple.org/markt").
+     * That is the case when the link fills most of a line that runs to the paragraph's right edge, and the
+     * next line goes on without a capital letter.
+     */
+    private fun isForcedBreak(layout: TextLayout, prev: Word, next: Word): Boolean {
+        val t = prev.text
+        val linkish = t.contains("://") || t.startsWith("www.", ignoreCase = true) || t.contains('@') ||
+            (t.contains('.') && t.contains('/'))
+        if (!linkish || next.text.firstOrNull()?.let { it.isLowerCase() || it.isDigit() || it in "./-_" } != true) return false
+        val line = layout.lines[prev.line]
+        val block = layout.blocks[prev.block]
+        val reachesEdge = line.box.right >= block.box.right - block.box.width * 0.05f
+        val fillsLine = prev.box.width >= line.box.width * 0.6f
+        return reachesEdge && fillsLine
     }
 
     /** True when a link at the end of one line obviously continues at the start of the next. */

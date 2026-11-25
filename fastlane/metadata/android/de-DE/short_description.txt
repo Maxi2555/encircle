@@ -1,1 +1,1 @@
-Text, Links und Codes am Bildschirm markieren wie mit Circle to Search. Offline.
+Text, Links, QR-Codes und IBANs am Bildschirm markieren. Komplett offline.

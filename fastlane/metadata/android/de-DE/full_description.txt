@@ -1,10 +1,25 @@
-<p>Encircle bringt die Bedienung von Circle to Search auf jedes Android-Handy, nur ohne Suche. Wie einen Assistenten aufrufen, der Bildschirm friert ein, und du wählst genau aus, was du brauchst.</p>
-<ul>
-<li><b>Intelligente Textauswahl:</b> Tippen für ein Wort, erneut für den Satz, noch einmal für den Absatz. Wischen wie ein Textmarker, diagonal über einen ganzen Absatz, oder einfach einkreisen.</li>
-<li><b>Links, E-Mail-Adressen, Telefonnummern und IBANs</b> werden unterstrichen und mit einem Tippen markiert, auch über Zeilenumbrüche hinweg.</li>
-<li><b>Alle gängigen Codes:</b> QR, Data Matrix, Aztec, PDF417, EAN/UPC, Code 128 und mehr. WLAN verbinden, Kontakte speichern, Termine eintragen, Links öffnen.</li>
-<li><b>Sauberer Text</b> beim Kopieren, ohne Zeilenumbrüche und Trennstriche mitten im Satz.</li>
-<li><b>Material You</b>-Farben und lebendige Animationen.</li>
-</ul>
-<p><b>Datenschutz von Grund auf:</b> Alles läuft auf dem Gerät, die App hat keine Internet-Berechtigung.</p>
-<p>Hinweis: Die Texterkennung nutzt Google ML Kit, das kostenlos, aber nicht quelloffen ist.</p>
+Encircle macht den ganzen Bildschirm auswählbar. Aufrufen, und der Bildschirm friert ein: Du tippst, wischst oder kreist ein, was du brauchst, und kopierst, teilst oder öffnest es. Ganz ohne Suche, ohne Konto und ohne Internet.
+
+INTELLIGENT MARKIEREN
+• Tippen markiert ein Wort, erneut tippen den Satz, noch einmal den ganzen Absatz
+• Wie mit einem Textmarker über Text wischen oder diagonal über einen ganzen Absatz
+• Einkreisen nimmt alles im Kreis, auch Bildausschnitte zum Teilen
+• Griffe zum Feinjustieren
+• Beim Kopieren werden Zeilen zu sauberen Absätzen zusammengefügt, Trennstriche verschwinden
+
+LINKS, ADRESSEN UND NUMMERN
+Links, E-Mail-Adressen, Telefonnummern und IBANs werden erkannt und unterstrichen, auch wenn sie über zwei Zeilen umbrechen oder als „name (at) firma (dot) de“ geschrieben sind. Ein Tipp markiert sie vollständig und bietet die passende Aktion: Link öffnen, E-Mail schreiben, anrufen, IBAN kopieren.
+
+ALLE GÄNGIGEN CODES
+QR, Micro-QR, Data Matrix, Aztec, PDF417, EAN, UPC, Code 128 und mehr. WLAN-Codes verbinden dich direkt, Visitenkarten landen in den Kontakten, Termine im Kalender.
+
+SCHÖN UND SCHNELL
+Material You mit den Farben deines Hintergrundbilds, hell und dunkel, mit lebendigen Animationen. Der eingefrorene Bildschirm erscheint sofort, Text und Codes werden parallel erkannt.
+
+DATENSCHUTZ VON GRUND AUF
+Alles läuft auf deinem Gerät. Encircle hat keine Internet-Berechtigung und kann nichts verschicken. Keine Werbung, kein Tracking, kein Konto. Encircle ist Open Source (Apache 2.0): github.com/Maxi2555/encircle
+
+SO RICHTEST DU ES EIN
+Android startet solche Apps nur als digitalen Assistenten. Öffne Encircle nach der Installation und tippe auf „Assistent auswählen“. Danach startest du Encircle mit langem Druck auf die Home-Taste oder mit der Assistenten-Geste deines Geräts. Die App zeigt dir Schritt für Schritt, was auf deinem Handy gilt.
+
+Hinweise: Die Texterkennung nutzt Google ML Kit, das offline auf dem Gerät läuft. Apps, die Screenshots sperren (etwa Banking-Apps), kann Encircle nicht lesen.

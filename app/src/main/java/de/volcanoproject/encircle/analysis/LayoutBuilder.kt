@@ -71,7 +71,7 @@ object LayoutBuilder {
                     val ratio = a.height / b.height
                     val vOverlap = min(ab.bottom, bb.bottom) - max(ab.top, bb.top)
                     val gap = bb.left - ab.right
-                    if (ratio in 0.75f..1.33f && vOverlap >= 0.6f * h && gap >= -0.3f * h && gap <= 1.1f * h) {
+                    if (ratio in 0.6f..1.67f && vOverlap >= 0.6f * h && gap >= -0.3f * h && gap <= 1.1f * h) {
                         a.elements = (a.elements + b.elements).sortedBy { it.box.left }
                         lines.removeAt(j)
                         merged = true
@@ -95,14 +95,19 @@ object LayoutBuilder {
                 val pb = last.box
                 val h = max(last.height, line.height)
                 val ratio = line.height / last.height
-                if (ratio !in 0.72f..1.38f) continue
+                // Lines without ascenders or descenders (digits, capitals) have boxes about 0.7 times as tall as
+                // mixed text of the same font, so the tolerance is wide; headings are told apart by the spacing.
+                if (ratio !in 0.62f..1.6f) continue
                 val gap = lb.top - pb.bottom
                 val maxGap = if (last.source == line.source) 1.1f * h else 0.8f * h
                 if (gap < -0.3f * h || gap > maxGap) continue
-                // Once a paragraph has a rhythm, a clearly larger gap starts the next paragraph.
+                // Once a paragraph has a rhythm, a clearly larger line pitch starts the next paragraph.
+                // Pitch is measured between line centres: box gaps swing with ascenders and descenders,
+                // so a line of digits ("0044 0532") would otherwise look detached from the text above.
                 if (p.size >= 2) {
-                    val rhythm = last.box.top - p[p.size - 2].box.bottom
-                    if (gap > max(rhythm * 1.5f + 0.1f * h, 0.3f * h)) continue
+                    val rhythm = pb.center.y - p[p.size - 2].box.center.y
+                    val pitch = lb.center.y - pb.center.y
+                    if (pitch > rhythm * 1.3f + 0.15f * h) continue
                 }
                 val overlap = min(lb.right, pb.right) - max(lb.left, pb.left)
                 val aligned = abs(lb.left - pb.left) <= 1.2f * h

@@ -48,6 +48,8 @@ class TextUnderstandingTest {
     fun ibanWithChecksum() {
         assertEquals(listOf(EntityKind.Iban to "DE89370400440532013000"), found("IBAN: DE89 3704 0044 0532 0130 00"))
         assertTrue(found("DE89 3704 0044 0532 0130 01").none { it.first == EntityKind.Iban })
+        // Wrapped over two lines, as text reflows on a phone screen.
+        assertEquals(listOf(EntityKind.Iban to "DE89370400440532013000"), found("an DE89 3704\n0044 0532 0130 00."))
     }
 
     @Test
@@ -98,6 +100,56 @@ class TextUnderstandingTest {
         val layout = LayoutBuilder.build(lines)
         assertEquals(2, layout.blocks.size)
         assertEquals("Erste Zeile zweite Zeile dritte.", layout.textOf(IntArray(layout.blocks[0].last + 1) { it }))
+    }
+
+    @Test
+    fun lineOfDigitsStaysInItsParagraph() {
+        // Digits have no ascenders or descenders, so their boxes are shorter and the box gap looks larger.
+        // Box positions as ML Kit reported them on the store demo screen: 37, 40 and 28 px tall.
+        val lines = listOf(
+            RawLine(listOf(el("Fragen", 72f, 1044f, 200f, 37f), el("+49", 760f, 1044f, 830f, 37f)), 5),
+            RawLine(listOf(el("Vorbestellungen", 72f, 1099f, 350f, 40f), el("DE89", 810f, 1099f, 900f, 40f), el("3704", 910f, 1099f, 990f, 40f)), 5),
+            RawLine(listOf(el("0044", 72f, 1162f, 160f, 28f), el("0532", 170f, 1162f, 258f, 28f), el("0130", 268f, 1162f, 356f, 28f), el("00.", 366f, 1162f, 410f, 28f)), 6),
+        )
+        val layout = LayoutBuilder.build(lines)
+        assertEquals(1, layout.blocks.size)
+        assertEquals(listOf(EntityKind.Iban), EntityFinder.find(layout).map { it.kind })
+    }
+
+    /** Two lines of one paragraph, 40 px tall, the first running to the right edge at x = 1000. */
+    private fun twoLines(first: List<Pair<String, Float>>, second: List<Pair<String, Float>>): List<RawLine> {
+        fun line(words: List<Pair<String, Float>>, top: Float, endAtEdge: Boolean): RawLine {
+            var x = 0f
+            val els = words.mapIndexed { i, (t, w) ->
+                val right = if (endAtEdge && i == words.lastIndex) 1000f else x + w
+                el(t, x, top, right).also { x = right + 12f }
+            }
+            return RawLine(els, 0)
+        }
+        return listOf(line(first, 0f, endAtEdge = true), line(second, 52f, endAtEdge = false))
+    }
+
+    @Test
+    fun entitiesAcrossLineBreaks() {
+        // E-mail wrapped after the @.
+        var layout = LayoutBuilder.build(twoLines(listOf("Schreib" to 160f, "an" to 50f, "hallo@" to 300f), listOf("kraterrand.example.org" to 420f, "heute." to 120f)))
+        assertEquals(listOf("hallo@kraterrand.example.org"), EntityFinder.find(layout).map { it.value })
+
+        // Domain wrapped after a dot.
+        layout = LayoutBuilder.build(twoLines(listOf("Siehe" to 120f, "https://kraterrand.example." to 600f), listOf("org/markt" to 200f, "für" to 60f)))
+        assertEquals(listOf("https://kraterrand.example.org/markt"), EntityFinder.find(layout).map { it.value })
+
+        // A long link broken mid-word because it fills the whole line.
+        layout = LayoutBuilder.build(twoLines(listOf("https://kraterrand.example.org/veranstaltungen/herbstm" to 900f), listOf("arkt-2026" to 200f, "lesen" to 100f)))
+        assertEquals(listOf("https://kraterrand.example.org/veranstaltungen/herbstmarkt-2026"), EntityFinder.find(layout).map { it.value })
+
+        // A short link at the line end is not glued to the next word.
+        layout = LayoutBuilder.build(twoLines(listOf("Mehr" to 100f, "Infos" to 100f, "auf" to 60f, "kraterrand.example.org" to 400f), listOf("und" to 70f, "vor" to 60f, "Ort." to 80f)))
+        assertEquals(listOf("https://kraterrand.example.org"), EntityFinder.find(layout).map { it.value })
+
+        // A phone number wrapped between digit groups.
+        layout = LayoutBuilder.build(twoLines(listOf("Ruf" to 70f, "an:" to 60f, "+49" to 70f, "30" to 50f), listOf("1234" to 90f, "5678." to 100f)))
+        assertEquals(listOf("+493012345678"), EntityFinder.find(layout).map { it.value })
     }
 
     @Test
