@@ -4,6 +4,7 @@
 package de.volcanoproject.encircle.ui
 
 import android.util.DisplayMetrics
+import android.view.HapticFeedbackConstants
 import android.view.View
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
@@ -68,6 +69,9 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.MutableFloatState
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -145,12 +149,16 @@ fun OverlayScreen(c: OverlayController) {
 
     val appear = remember { Animatable(0f) }
     val shimmer = remember { Animatable(0f) }
-    val barDrag = remember { mutableFloatStateOf(0f) }
+    // How far the bar has been pushed up from its resting place (0 or negative, in px), and
+    // whether the overlay is leaving through the top because the bar was pushed out.
+    val barOffset = remember { mutableFloatStateOf(0f) }
+    val exitUp = remember { mutableStateOf(false) }
     val exit = remember { Animatable(0f) }
     val barIn = remember { Animatable(0f) }
     val edge = remember { Animatable(0f) }
     LaunchedEffect(c.sessionId, active) {
-        barDrag.floatValue = 0f
+        barOffset.floatValue = 0f
+        exitUp.value = false
         if (active) appear.animateTo(1f, tween(420, easing = FastOutSlowInEasing)) else appear.snapTo(0f)
     }
     LaunchedEffect(c.sessionId, active) {
@@ -182,7 +190,8 @@ fun OverlayScreen(c: OverlayController) {
             exit.snapTo(0f)
         }
     }
-    val dragFadePx = with(density) { 360.dp.toPx() }
+    // Fades the overlay while the bar is pushed past the top edge, previewing that letting go closes it.
+    val beyondTop = remember { mutableFloatStateOf(0f) }
 
     Box(
         Modifier
@@ -194,7 +203,7 @@ fun OverlayScreen(c: OverlayController) {
             }
             .graphicsLayer {
                 // Fading reveals the live app underneath, which looks identical to the screenshot.
-                alpha = (1f - exit.value) * (1f - (barDrag.floatValue / dragFadePx).coerceIn(0f, 0.75f))
+                alpha = (1f - exit.value) * (1f - 0.6f * beyondTop.floatValue)
             },
     ) {
         if (img != null) {
@@ -209,7 +218,9 @@ fun OverlayScreen(c: OverlayController) {
                 c = c,
                 appear = barIn::value,
                 exit = exit::value,
-                barDrag = barDrag,
+                barOffset = barOffset,
+                exitUp = exitUp,
+                beyondTop = beyondTop,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
@@ -767,13 +778,24 @@ private fun BottomPanel(
     c: OverlayController,
     appear: () -> Float,
     exit: () -> Float,
-    barDrag: MutableFloatState,
+    barOffset: MutableFloatState,
+    exitUp: MutableState<Boolean>,
+    beyondTop: MutableFloatState,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
+    val view = LocalView.current
     val scheme = MaterialTheme.colorScheme
-    val dismissPx = with(density) { 56.dp.toPx() }
     val hidePx = with(density) { 240.dp.toPx() }
+    val homeSnapPx = with(density) { 40.dp.toPx() }
+    val closeMarginPx = with(density) { 24.dp.toPx() }
+    val safeTopPx = WindowInsets.statusBars.getTop(density) + with(density) { 8.dp.toPx() }
+    // Distance from the bar's resting place to the top of the screen, measured from its layout position.
+    var restTop by remember { mutableFloatStateOf(0f) }
+    var panelHeight by remember { mutableFloatStateOf(0f) }
+    // Pushing the bar this far up (to the top edge) closes Encircle when released.
+    val closeAt = { (restTop - safeTopPx - closeMarginPx).coerceAtLeast(hidePx) }
+    var armed by remember { mutableStateOf(false) }
     val actions = remember(c.selection, c.layout, c.codes, c.image, c.entities) { c.actions() }
     val (title, preview) = barTexts(c)
 
@@ -782,17 +804,46 @@ private fun BottomPanel(
             .fillMaxWidth()
             .navigationBarsPadding()
             .padding(start = 12.dp, end = 12.dp, bottom = 10.dp)
+            .onGloballyPositioned { coords ->
+                // Layout position ignores the graphicsLayer translation, so this is the resting place.
+                restTop = coords.positionInRoot().y
+                panelHeight = coords.size.height.toFloat()
+            }
             .graphicsLayer {
-                translationY = (1f - appear()) * hidePx + barDrag.floatValue + exit() * hidePx
+                val leaving = if (exitUp.value) -(restTop + panelHeight) else hidePx
+                translationY = (1f - appear()) * hidePx + barOffset.floatValue + exit() * leaving
             }
             .draggable(
                 orientation = Orientation.Vertical,
                 state = rememberDraggableState { d ->
-                    barDrag.floatValue = (barDrag.floatValue + d).coerceAtLeast(0f)
+                    // Up moves the bar out of the way; it never goes below its resting place.
+                    val next = (barOffset.floatValue + d).coerceIn(-(restTop + panelHeight), 0f)
+                    barOffset.floatValue = next
+                    val past = -next - closeAt()
+                    beyondTop.floatValue = (past / panelHeight.coerceAtLeast(1f)).coerceIn(0f, 1f)
+                    val nowArmed = past > 0f
+                    if (nowArmed != armed) {
+                        armed = nowArmed
+                        view.performHapticFeedback(
+                            if (nowArmed) HapticFeedbackConstants.CONTEXT_CLICK else HapticFeedbackConstants.CLOCK_TICK,
+                        )
+                    }
                 },
                 onDragStopped = { velocity ->
-                    if (barDrag.floatValue > dismissPx || velocity > 900f) c.dismiss()
-                    else animate(barDrag.floatValue, 0f, animationSpec = spring(dampingRatio = 0.7f)) { v, _ -> barDrag.floatValue = v }
+                    val up = -barOffset.floatValue
+                    val flungOut = velocity < -2600f && up > restTop * 0.35f
+                    if (armed || flungOut) {
+                        // Pushed out at the top: leave upwards.
+                        exitUp.value = true
+                        c.dismiss()
+                    } else if (up < homeSnapPx) {
+                        animate(barOffset.floatValue, 0f, animationSpec = spring(dampingRatio = 0.75f)) { v, _ ->
+                            barOffset.floatValue = v
+                        }
+                    }
+                    // Anywhere else the bar simply stays where it was put.
+                    armed = false
+                    beyondTop.floatValue = 0f
                 },
             ),
     ) {
@@ -823,17 +874,10 @@ private fun BottomPanel(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    Modifier
-                        .padding(top = 8.dp)
-                        .size(width = 36.dp, height = 4.dp)
-                        .clip(CircleShape)
-                        .background(scheme.onSurfaceVariant.copy(alpha = 0.35f)),
-                )
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 12.dp)
+                        .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)
                         .heightIn(min = 48.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

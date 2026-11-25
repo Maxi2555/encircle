@@ -54,7 +54,7 @@ The selection model: words in reading order with line and paragraph indices, plu
 | File | Responsibility |
 | --- | --- |
 | `ui/OverlayController` | All state of one session: screenshot, layout, codes, entities, current selection. Gesture handlers (tap, long-press, highlight stroke, lasso, handle drag), progressive selection (word or entity → sentence → paragraph) and the action list for each selection type. |
-| `ui/OverlayScreen` | Drawing and input. One `Canvas` paints the screenshot, scrim, selection, entity underlines, code outlines and animations in screenshot coordinates. One pointer detector handles every gesture so they never conflict. Also the code badges and the bottom bar with its swipe-to-dismiss. |
+| `ui/OverlayScreen` | Drawing and input. One `Canvas` paints the screenshot, scrim, selection, entity underlines, code outlines and animations in screenshot coordinates. One pointer detector handles every gesture so they never conflict. Also the code badges and the bottom bar, which can be pushed up out of the way and closes the overlay when pushed out at the top. |
 | `ui/Geometry` | Stroke analysis (lasso detection by closure and turning angle), polygon helpers, path smoothing. |
 | `ui/Theme` | Material You theme and `GlowPalette`, a vivid palette derived from the wallpaper's accent colour for all light effects. |
 
