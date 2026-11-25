@@ -44,6 +44,7 @@ sealed interface CodeContent {
 object CodeParser {
 
     private val SCHEME_URI = Regex("""^[a-zA-Z][a-zA-Z0-9+.\-]{1,30}:[^\s]+$""")
+    private val LOCAL_SCHEMES = setOf("file", "content", "android.resource", "intent", "android-app", "javascript", "data")
 
     fun parse(raw: String, isProductCode: Boolean): CodeContent {
         val t = raw.trim()
@@ -62,7 +63,7 @@ object CodeParser {
             upper.startsWith("HTTP://") || upper.startsWith("HTTPS://") -> CodeContent.Link(t)
             !t.contains(' ') && upper.startsWith("WWW.") -> CodeContent.Link("https://$t")
             Patterns.EMAIL_ADDRESS.matcher(t).matches() -> CodeContent.Email(t, null, null)
-            SCHEME_URI.matches(t) -> CodeContent.OtherUri(t)
+            SCHEME_URI.matches(t) && t.substringBefore(':').lowercase(Locale.ROOT) in LOCAL_SCHEMES -> CodeContent.OtherUri(t)
             !t.contains(' ') && t.contains('.') && Patterns.WEB_URL.matcher(t).matches() -> CodeContent.Link("https://$t")
             else -> CodeContent.Text(t)
         }
