@@ -18,7 +18,7 @@ Encircle imitiert die Bedienung von Circle to Search auf Android, sucht aber nic
 - **Alle gängigen Codes** werden erkannt und hervorgehoben: QR, Micro-QR, rMQR, Data Matrix, Aztec, PDF417, MaxiCode, EAN, UPC, Code 128/39/93, ITF, Codabar, GS1 DataBar.
 - **Passende Aktionen je Inhalt:** Link öffnen, WLAN verbinden, Kontakt speichern, Termin eintragen, anrufen, E-Mail oder SMS schreiben, Ort in Karten öffnen, kopieren, teilen.
 - **Leiste unten** im Stil der Suchleiste. Nach unten wischen oder Zurück schließt alles.
-- Material You mit dynamischen Farben, hell und dunkel. Die Leuchteffekte nutzen kräftigere Farben, die aus der Akzentfarbe des Hintergrundbilds abgeleitet sind: ein farbiger Rand während der Erkennung, eine Farbwelle über den Text, und bei QR-Codes füllen sich die dunklen Module mit Licht.
+- Material You mit dynamischen Farben, hell und dunkel. Die Leuchteffekte nutzen kräftigere Farben, die aus der Akzentfarbe des Hintergrundbilds abgeleitet sind: ein farbiger Rand während der Erkennung, eine Farbwelle über den Text, und wenn die Welle über QR- und Barcodes läuft, leuchten deren dunkle Module in diesen Farben auf.
 
 ## Einrichtung auf dem Gerät
 

@@ -222,18 +222,23 @@ private fun ScreenLayer(c: OverlayController, img: ImageBitmap, appear: () -> Fl
     val layout = c.layout
     val scrim by animateFloatAsState(if (selection == Selection.None) 0.18f else 0.45f, tween(260), label = "scrim")
 
-    // One slow rotation drives every flowing gradient: the frame, code outlines and ripples.
+    // One slow rotation drives every flowing gradient: the frame and the code outlines.
     val spin = rememberInfiniteTransition(label = "spin").animateFloat(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(tween(2800, easing = LinearEasing), RepeatMode.Restart),
         label = "spin",
     )
+    // The main wave: once text and codes are both known, one wave of colour runs up from the bottom
+    // edge across every word and through every code, so results appear together however fast each was.
     val wave = remember { Animatable(0f) }
-    LaunchedEffect(layout) {
-        if (!layout.isEmpty) {
+    val done = !c.analyzing
+    LaunchedEffect(c.sessionId, done) {
+        if (done && (!layout.isEmpty || c.codes.isNotEmpty())) {
             wave.snapTo(0f)
-            wave.animateTo(1f, tween(950, easing = FastOutSlowInEasing))
+            wave.animateTo(1f, tween(1050, easing = FastOutSlowInEasing))
+        } else {
+            wave.snapTo(0f)
         }
     }
     val entitiesIn = remember { Animatable(0f) }
@@ -245,12 +250,9 @@ private fun ScreenLayer(c: OverlayController, img: ImageBitmap, appear: () -> Fl
         }
     }
     val codesIn = remember { Animatable(0f) }
-    val ripple = remember { Animatable(0f) }
     LaunchedEffect(c.codes) {
         if (c.codes.isNotEmpty()) {
             codesIn.snapTo(0f)
-            ripple.snapTo(0f)
-            launch { ripple.animateTo(1f, tween(1200, easing = LinearOutSlowInEasing)) }
             codesIn.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 260f))
         }
     }
@@ -342,40 +344,24 @@ private fun ScreenLayer(c: OverlayController, img: ImageBitmap, appear: () -> Fl
                 }
             }
 
-            // Barcodes: ripple rings, a flowing gradient outline and corner brackets that snap into place.
+            // Barcodes: a flowing gradient outline and corner brackets that snap into place. The code itself
+            // takes on the colours of the main wave as it passes: its dark modules light up (screen blending
+            // tints dark pixels, white stays white).
             val ca = codesIn.value
             val cv = ca.coerceIn(0f, 1f)
-            val rp = ripple.value
+            val waveFrom = Offset(full.width / 2f, full.height)
+            val waveReach = hypot(full.width / 2f, full.height)
+            val prism = Brush.horizontalGradient(glow.loop, 0f, full.width)
             for (code in c.codes) {
                 val p = codePaths[code.id] ?: continue
                 val selected = (selection as? Selection.Code)?.code?.id == code.id
                 val brush = spinBrush(glow.loop, code.center, deg + code.id * 47f)
-                val radius = max(code.bounds.width, code.bounds.height) / 2f
-                // Ripples follow the code's own outline and grow by a fixed distance, so wide barcodes
-                // get the same calm rings as small QR codes.
-                for (k in 0..1) {
-                    val q = ((rp - k * 0.2f) / 0.8f).coerceIn(0f, 1f)
-                    if (q > 0f && q < 1f) {
-                        val grow = 48f * u * q
-                        val sx = (code.bounds.width + 2 * grow) / max(code.bounds.width, 1f)
-                        val sy = (code.bounds.height + 2 * grow) / max(code.bounds.height, 1f)
-                        withTransform({ scale(sx, sy, code.center) }) {
-                            drawPath(p, brush, alpha = (1f - q) * 0.8f, style = Stroke(width = (5f * (1f - q) + 1f) * u / max(sx, sy)))
-                        }
-                    }
-                }
-                // The dark modules light up in prism colours while the wave passes. Screen blending
-                // tints dark pixels and leaves the light background white.
-                val fill = if (selected) sheen.value else rp
-                if (fill > 0f && fill < 1f) {
+                val ww = wave.value
+                val d = (code.center - waveFrom).getDistance() / waveReach
+                val lit = if (ww > 0f && ww < 1f) (1f - abs(d - (ww * 1.2f - 0.1f)) * 3.5f).coerceIn(0f, 1f) else 0f
+                if (lit > 0f) {
                     clipPath(p) {
-                        drawCircle(
-                            brush,
-                            radius * 1.5f * min(1f, fill * 1.8f),
-                            code.center,
-                            alpha = (1f - fill).pow(0.6f),
-                            blendMode = BlendMode.Screen,
-                        )
+                        drawRect(prism, code.bounds.topLeft, code.bounds.size, alpha = lit * 0.95f, blendMode = BlendMode.Screen)
                     }
                 }
                 drawPath(p, brush, alpha = (if (selected) 0.16f else 0.10f) * cv)
@@ -385,7 +371,7 @@ private fun ScreenLayer(c: OverlayController, img: ImageBitmap, appear: () -> Fl
                 drawCodeBrackets(code, (1f - ca) * 22f * u + 12f * u, u, brush, cv)
             }
 
-            // Once text is found, a wave of colour runs outward from the bottom edge across the words.
+            // The main wave over the words.
             val w = wave.value
             if (w > 0f && w < 1f) {
                 val from = Offset(full.width / 2f, full.height)
@@ -427,6 +413,9 @@ private fun ScreenLayer(c: OverlayController, img: ImageBitmap, appear: () -> Fl
         drawActivation(shimmer(), edge(), deg, glow)
     }
 }
+
+/** Height of the activation colour band, as a share of the screen height. */
+private const val BAND_FRACTION = 0.42f
 
 /** Line pieces of each entity, merged per text line, for underlining. */
 private fun entitySegments(entities: List<TextEntity>, layout: TextLayout): List<Pair<TextEntity, List<Rect>>> =
@@ -562,7 +551,7 @@ private fun DrawScope.drawActivation(p: Float, edge: Float, degrees: Float, glow
             ),
         )
         // A colourful band: horizontal prism gradient, masked to a soft vertical stripe.
-        val band = h * 0.42f
+        val band = h * BAND_FRACTION
         val cy = h + band / 2f - p * (h + band)
         drawContext.canvas.saveLayer(Rect(0f, 0f, w, h), Paint())
         drawRect(Brush.horizontalGradient(glow.loop, 0f, w), topLeft = Offset(0f, cy - band / 2f), size = Size(w, band))
