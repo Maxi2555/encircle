@@ -254,12 +254,15 @@ class OverlayController(private val context: Context, private val finish: () -> 
         trail.add(p)
         strokeActive = true
         strokeAnchor = layout.wordAt(p, dp(6f))
-        if (strokeAnchor != null) haptics(gestureStart())
+        lastStrokePoint = view
+        tickDistance = 0f
+        haptics(gestureStart())
     }
 
     fun onStrokeMove(view: Offset) {
         val p = toImage(view)
         trail.add(p)
+        strokeTexture(view)
         // Starting on a word means "highlight": follow the finger live, like a text marker.
         val anchor = strokeAnchor ?: return
         val end = layout.nearestWord(p, dp(40f)) ?: return
@@ -404,10 +407,34 @@ class OverlayController(private val context: Context, private val finish: () -> 
     private fun codeAt(p: Offset): DetectedCode? =
         codes.filter { c -> pointInPolygon(p, expandPolygon(c.corners, dp(12f))) }.minByOrNull { it.bounds.width * it.bounds.height }
 
+    // ---------------------------------------------------------------- stroke texture
+
+    private var lastStrokePoint: Offset? = null
+    private var tickDistance = 0f
+    private var lastTickAt = 0L
+
+    /**
+     * A fine tick every few millimetres of the finger's path, so drawing feels like a pen on paper.
+     * Rate-limited for fast strokes, and skipped right after a selection tick so they never double up.
+     */
+    private fun strokeTexture(view: Offset) {
+        val last = lastStrokePoint
+        lastStrokePoint = view
+        if (last == null) return
+        tickDistance += (view - last).getDistance()
+        if (tickDistance < STROKE_TICK_DP * density) return
+        tickDistance = 0f
+        val now = SystemClock.uptimeMillis()
+        if (now - lastTickAt < MIN_TICK_INTERVAL_MS) return
+        lastTickAt = now
+        haptics(strokeTick())
+    }
+
     private fun selectRange(r: IntRange, haptic: Int = HapticFeedbackConstants.CLOCK_TICK) {
         if (r.isEmpty()) return
         selection = Selection.Words(IntArray(r.last - r.first + 1) { r.first + it })
         haptics(haptic)
+        lastTickAt = SystemClock.uptimeMillis()
     }
 
     fun selectCode(c: DetectedCode) {
@@ -596,11 +623,20 @@ class OverlayController(private val context: Context, private val finish: () -> 
     }
 
     private fun confirm() = if (Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.VIRTUAL_KEY
+    private fun strokeTick() =
+        if (Build.VERSION.SDK_INT >= 34) HapticFeedbackConstants.SEGMENT_FREQUENT_TICK else HapticFeedbackConstants.TEXT_HANDLE_MOVE
+
     private fun gestureStart() = if (Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.GESTURE_START else HapticFeedbackConstants.CLOCK_TICK
     private fun gestureEnd() = if (Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.GESTURE_END else HapticFeedbackConstants.CLOCK_TICK
 
     companion object {
         private const val TAG = "Overlay"
         private const val OCR_TIMEOUT_MS = 6000L
+
+        /** Finger travel between two texture ticks while drawing. */
+        private const val STROKE_TICK_DP = 12f
+
+        /** Fast strokes still tick at most this often. */
+        private const val MIN_TICK_INTERVAL_MS = 25L
     }
 }
