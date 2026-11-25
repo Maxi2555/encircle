@@ -115,6 +115,7 @@ class OverlayController(private val context: Context, private val finish: () -> 
     fun begin(showFlags: Int, screenshotExpected: Boolean) {
         sessionId++
         exiting = false
+        scope.launch(Dispatchers.IO) { SystemActions.pruneShared() }
         Diagnostics.start(context, "Flags 0x" + Integer.toHexString(showFlags) + if (screenshotExpected) " · Screenshot angefordert" else " · ohne Screenshot")
         if (!screenshotExpected) {
             screenshotMissing = image == null
