@@ -9,6 +9,7 @@ import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -37,6 +38,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -60,7 +62,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.MutableFloatState
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -99,7 +102,6 @@ import io.github.maxi2555.encircle.R
 import io.github.maxi2555.encircle.actions.SystemActions
 import io.github.maxi2555.encircle.analysis.CodeContent
 import io.github.maxi2555.encircle.analysis.DetectedCode
-import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 import kotlin.math.PI
@@ -124,10 +126,10 @@ fun OverlayScreen(c: OverlayController) {
 
     val appear = remember { Animatable(0f) }
     val shimmer = remember { Animatable(0f) }
-    val barDrag = remember { Animatable(0f) }
+    val barDrag = remember { mutableFloatStateOf(0f) }
     val exit = remember { Animatable(0f) }
     LaunchedEffect(c.sessionId, active) {
-        barDrag.snapTo(0f)
+        barDrag.floatValue = 0f
         if (active) appear.animateTo(1f, tween(420, easing = FastOutSlowInEasing)) else appear.snapTo(0f)
     }
     LaunchedEffect(c.sessionId, img) {
@@ -156,7 +158,7 @@ fun OverlayScreen(c: OverlayController) {
             }
             .graphicsLayer {
                 // Fading reveals the live app underneath, which looks identical to the screenshot.
-                alpha = (1f - exit.value) * (1f - (barDrag.value / dragFadePx).coerceIn(0f, 0.75f))
+                alpha = (1f - exit.value) * (1f - (barDrag.floatValue / dragFadePx).coerceIn(0f, 0.75f))
             },
     ) {
         if (img != null) {
@@ -350,7 +352,7 @@ private fun DrawScope.drawBrackets(r: Rect, u: Float) {
 
 /** Teardrop selection handle; the pointed corner touches the text. */
 private fun DrawScope.drawHandle(center: Offset, start: Boolean, color: Color) {
-    val r = 11.dp.toPx()
+    val r = 9.dp.toPx()
     val corner = if (start) Rect(center.x, center.y - r, center.x + r, center.y) else Rect(center.x - r, center.y - r, center.x, center.y)
     drawCircle(Color.White, r + 1.5.dp.toPx(), center, alpha = 0.9f)
     drawRect(Color.White, corner.topLeft - Offset(if (start) 0f else 1.5.dp.toPx(), 1.5.dp.toPx()), Size(r + 1.5.dp.toPx(), r + 1.5.dp.toPx()), alpha = 0.9f)
@@ -459,19 +461,40 @@ private fun CodeBadges(c: OverlayController) {
     val density = LocalDensity.current
     val safeTop = WindowInsets.statusBars.getTop(density) + with(density) { 8.dp.roundToPx() }
     val gap = with(density) { 12.dp.roundToPx() }
+    // Keep badges clear of the action row and bar at the bottom.
+    val bottomReserve = WindowInsets.navigationBars.getBottom(density) + with(density) { 190.dp.roundToPx() }
     Layout(
         content = { codes.forEach { CodeBadge(c, it) } },
         modifier = Modifier.fillMaxSize(),
     ) { measurables, constraints ->
         val placeables = measurables.map { it.measure(Constraints()) }
-        layout(constraints.maxWidth, constraints.maxHeight) {
+        val width = constraints.maxWidth
+        val height = constraints.maxHeight
+        val bottomLimit = height - bottomReserve
+        // Code outlines in view space, padded like the drawn glow, so badges never cover another code.
+        val outlines = codes.map { code ->
+            val tl = c.toView(code.bounds.topLeft)
+            val br = c.toView(code.bounds.bottomRight)
+            Rect(tl, br).inflate(gap.toFloat())
+        }
+        val taken = ArrayList<Rect>()
+        layout(width, height) {
             placeables.forEachIndexed { i, p ->
-                val b = codes[i].bounds
-                val top = c.toView(Offset(b.center.x, b.top))
-                val bottom = c.toView(Offset(b.center.x, b.bottom))
-                var y = top.y.roundToInt() - p.height - gap
-                if (y < safeTop) y = bottom.y.roundToInt() + gap
-                val x = (top.x.roundToInt() - p.width / 2).coerceIn(gap, (constraints.maxWidth - p.width - gap).coerceAtLeast(gap))
+                val box = outlines[i]
+                val x = (box.center.x.roundToInt() - p.width / 2).coerceIn(gap, (width - p.width - gap).coerceAtLeast(gap))
+                val candidates = listOf(
+                    box.top.roundToInt() - p.height - gap / 2, // above
+                    box.bottom.roundToInt() + gap / 2, // below
+                    box.top.roundToInt() + gap * 2, // on top of its own code
+                )
+                fun rectAt(y: Int) = Rect(x.toFloat(), y.toFloat(), (x + p.width).toFloat(), (y + p.height).toFloat())
+                val y = candidates.firstOrNull { y ->
+                    val r = rectAt(y)
+                    y >= safeTop && y + p.height <= bottomLimit &&
+                        outlines.indices.none { j -> j != i && outlines[j].overlaps(r) } &&
+                        taken.none { it.overlaps(r) }
+                } ?: candidates.last()
+                taken += rectAt(y)
                 p.place(x, y)
             }
         }
@@ -523,13 +546,12 @@ private fun BottomPanel(
     c: OverlayController,
     appear: () -> Float,
     exit: () -> Float,
-    barDrag: Animatable<Float, *>,
+    barDrag: MutableFloatState,
     modifier: Modifier = Modifier,
 ) {
-    val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val scheme = MaterialTheme.colorScheme
-    val dismissPx = with(density) { 88.dp.toPx() }
+    val dismissPx = with(density) { 56.dp.toPx() }
     val hidePx = with(density) { 240.dp.toPx() }
     val actions = remember(c.selection, c.layout, c.codes, c.image) { c.actions() }
     val (title, preview) = barTexts(c)
@@ -540,16 +562,16 @@ private fun BottomPanel(
             .navigationBarsPadding()
             .padding(start = 12.dp, end = 12.dp, bottom = 10.dp)
             .graphicsLayer {
-                translationY = (1f - appear()) * hidePx + barDrag.value + exit() * hidePx
+                translationY = (1f - appear()) * hidePx + barDrag.floatValue + exit() * hidePx
             }
             .draggable(
                 orientation = Orientation.Vertical,
                 state = rememberDraggableState { d ->
-                    scope.launch { barDrag.snapTo((barDrag.value + d).coerceAtLeast(0f)) }
+                    barDrag.floatValue = (barDrag.floatValue + d).coerceAtLeast(0f)
                 },
                 onDragStopped = { velocity ->
-                    if (barDrag.value > dismissPx || velocity > 1800f) c.dismiss()
-                    else barDrag.animateTo(0f, spring(dampingRatio = 0.7f))
+                    if (barDrag.floatValue > dismissPx || velocity > 900f) c.dismiss()
+                    else animate(barDrag.floatValue, 0f, animationSpec = spring(dampingRatio = 0.7f)) { v, _ -> barDrag.floatValue = v }
                 },
             ),
     ) {
@@ -566,7 +588,7 @@ private fun BottomPanel(
                 Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(bottom = if (list.isEmpty()) 0.dp else 10.dp),
+                    .padding(start = 4.dp, end = 4.dp, top = 8.dp, bottom = if (list.isEmpty()) 0.dp else 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 list.forEach { ActionButton(it) }

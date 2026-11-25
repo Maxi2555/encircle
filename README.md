@@ -37,7 +37,7 @@ Voraussetzungen: JDK 17 oder neuer und das Android SDK.
 ./gradlew assembleRelease
 ```
 
-Die APK liegt danach unter `app/build/outputs/apk/release/app-release.apk`. Der Release-Build ist mit dem lokalen Debug-Schlüssel signiert, damit er sich direkt installieren lässt. Für eine Veröffentlichung einen eigenen Signaturschlüssel eintragen.
+Für aktuelle Handys die APK `app/build/outputs/apk/release/app-arm64-v8a-release.apk` nehmen. Daneben entstehen APKs für ältere 32-Bit-Geräte, für x86_64-Emulatoren und eine universelle APK. Der Release-Build ist mit dem lokalen Debug-Schlüssel signiert, damit er sich direkt installieren lässt. Für eine Veröffentlichung einen eigenen Signaturschlüssel eintragen.
 
 Für flüssige Animationen den Release-Build verwenden. Compose läuft im Debug-Build deutlich langsamer.
 

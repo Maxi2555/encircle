@@ -302,7 +302,7 @@ class OverlayController(private val context: Context, private val finish: () -> 
         val sel = selection as? Selection.Words ?: return null
         val a = layout.words.getOrNull(sel.first) ?: return null
         val b = layout.words.getOrNull(sel.last) ?: return null
-        val r = 11f * density
+        val r = 9f * density
         val start = toView(Offset(a.box.left, a.box.bottom)) + Offset(-r, r)
         val end = toView(Offset(b.box.right, b.box.bottom)) + Offset(r, r)
         return start to end
