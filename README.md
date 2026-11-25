@@ -72,6 +72,7 @@ To fix it permanently, register Encircle's placeholder recognizer once over adb 
 ```sh
 adb shell settings --user <user> put secure voice_recognition_service de.volcanoproject.encircle/.assist.StubRecognitionService
 ```
+
 </details>
 
 ## Build
