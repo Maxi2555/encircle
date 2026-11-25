@@ -32,6 +32,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import android.os.SystemClock
+import io.github.maxi2555.encircle.Diagnostics
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -101,17 +104,22 @@ class OverlayController(private val context: Context, private val finish: () -> 
 
     // ---------------------------------------------------------------- session lifecycle
 
-    fun begin(screenshotExpected: Boolean) {
+    fun begin(showFlags: Int, screenshotExpected: Boolean) {
         sessionId++
         exiting = false
+        Diagnostics.start(context, "Flags 0x" + Integer.toHexString(showFlags) + if (screenshotExpected) " · Screenshot angefordert" else " · ohne Screenshot")
         if (!screenshotExpected) {
             screenshotMissing = image == null
+            Diagnostics.put(context, "Screenshot", "vom System nicht angefordert")
             return
         }
         timeout?.cancel()
         timeout = scope.launch {
             delay(2000)
-            if (image == null) screenshotMissing = true
+            if (image == null) {
+                screenshotMissing = true
+                Diagnostics.put(context, "Screenshot", "nach 2 s nicht angekommen")
+            }
         }
     }
 
@@ -119,8 +127,10 @@ class OverlayController(private val context: Context, private val finish: () -> 
         timeout?.cancel()
         if (bitmap == null) {
             screenshotMissing = true
+            Diagnostics.put(context, "Screenshot", "leer (null) vom System")
             return
         }
+        Diagnostics.put(context, "Screenshot", "${bitmap.width}×${bitmap.height} ${bitmap.config}")
         screenshotMissing = false
         image = bitmap.asImageBitmap()
         haptics(HapticFeedbackConstants.VIRTUAL_KEY)
@@ -129,11 +139,35 @@ class OverlayController(private val context: Context, private val finish: () -> 
             val soft = withContext(Dispatchers.Default) { ScreenAnalyzer.softwareCopy(bitmap) }
             pixels = soft
             launch {
-                codes = try { ScreenAnalyzer.scanCodes(soft) } catch (e: Exception) { Log.w(TAG, "scan failed", e); emptyList() }
+                val t0 = SystemClock.elapsedRealtime()
+                codes = try {
+                    ScreenAnalyzer.scanCodes(soft).also {
+                        Diagnostics.put(context, "Codes", "${it.size} in ${SystemClock.elapsedRealtime() - t0} ms")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "scan failed", e)
+                    Diagnostics.put(context, "Codes", "Fehler: ${e.javaClass.simpleName} ${e.message.orEmpty()}")
+                    emptyList()
+                }
                 codesReady = true
             }
             launch {
-                layout = try { ScreenAnalyzer.recognizeText(soft) } catch (e: Exception) { Log.w(TAG, "ocr failed", e); TextLayout.EMPTY }
+                val t0 = SystemClock.elapsedRealtime()
+                layout = try {
+                    val result = withTimeoutOrNull(OCR_TIMEOUT_MS) { ScreenAnalyzer.recognizeText(soft) }
+                    val ms = SystemClock.elapsedRealtime() - t0
+                    if (result == null) {
+                        Diagnostics.put(context, "Texterkennung", "Zeitüberschreitung nach $ms ms")
+                        TextLayout.EMPTY
+                    } else {
+                        Diagnostics.put(context, "Texterkennung", "${result.words.size} Wörter in $ms ms")
+                        result
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "ocr failed", e)
+                    Diagnostics.put(context, "Texterkennung", "Fehler: ${e.javaClass.simpleName} ${e.message.orEmpty()}")
+                    TextLayout.EMPTY
+                }
                 textReady = true
             }
         }
@@ -526,6 +560,7 @@ class OverlayController(private val context: Context, private val finish: () -> 
 
     companion object {
         private const val TAG = "Overlay"
+        private const val OCR_TIMEOUT_MS = 6000L
 
         /** First real-looking link in [text]; plain words with a dot are not enough. */
         fun findUrl(text: String): String? {

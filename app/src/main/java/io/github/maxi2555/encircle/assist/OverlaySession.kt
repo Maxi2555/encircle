@@ -93,7 +93,7 @@ class OverlaySession(context: Context) : VoiceInteractionSession(context) {
 
     override fun onShow(args: Bundle?, showFlags: Int) {
         super.onShow(args, showFlags)
-        controller.begin(screenshotExpected = showFlags and SHOW_WITH_SCREENSHOT != 0)
+        controller.begin(showFlags, screenshotExpected = showFlags and SHOW_WITH_SCREENSHOT != 0)
     }
 
     override fun onHandleScreenshot(screenshot: Bitmap?) {

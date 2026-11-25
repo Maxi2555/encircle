@@ -43,6 +43,7 @@ import io.github.maxi2555.encircle.ui.LogoRing
 
 class MainActivity : ComponentActivity() {
     private var isAssistant by mutableStateOf(false)
+    private var diagnostics by mutableStateOf(emptyList<Pair<String, String>>())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -52,6 +53,7 @@ class MainActivity : ComponentActivity() {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
                     SetupScreen(
                         isAssistant = isAssistant,
+                        diagnostics = diagnostics,
                         onOpenSettings = { SystemActions.openAssistSettings(this) },
                         onTry = { AssistService.launchOverlay() },
                     )
@@ -63,11 +65,17 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         isAssistant = AssistService.isActive(this)
+        diagnostics = Diagnostics.read(this)
     }
 }
 
 @Composable
-private fun SetupScreen(isAssistant: Boolean, onOpenSettings: () -> Unit, onTry: () -> Unit) {
+private fun SetupScreen(
+    isAssistant: Boolean,
+    diagnostics: List<Pair<String, String>>,
+    onOpenSettings: () -> Unit,
+    onTry: () -> Unit,
+) {
     val scheme = MaterialTheme.colorScheme
     Column(
         Modifier
@@ -133,7 +141,9 @@ private fun SetupScreen(isAssistant: Boolean, onOpenSettings: () -> Unit, onTry:
             listOf(
                 "In den Einstellungen unter Standard-Apps › Digitaler Assistent Encircle wählen.",
                 "Dort „Text auf dem Bildschirm verwenden“ und „Screenshot verwenden“ einschalten.",
-                "Pixel: Circle to Search unter System › Navigationsmodus ausschalten, damit der lange Druck den Assistenten startet.",
+                "Drei-Tasten-Navigation: Home gedrückt halten startet Encircle.",
+                "Gestennavigation auf GrapheneOS und anderen AOSP-Systemen: Unter System › Navigationsmodus › Zahnrad das Wischen zum Aufrufen des Assistenten einschalten. Dann startet ein Wisch schräg nach oben aus einer unteren Ecke Encircle.",
+                "Pixel mit Google-Launcher: Circle to Search unter System › Navigationsmodus ausschalten, dann startet langes Drücken auf die Leiste Encircle.",
                 "Samsung: Circle to Search unter Anzeige › Navigationsleiste ausschalten.",
             ),
         )
@@ -161,6 +171,27 @@ private fun SetupScreen(isAssistant: Boolean, onOpenSettings: () -> Unit, onTry:
                             "Links wie https://example.org und Adressen wie hallo@example.org werden erkannt.",
                         style = MaterialTheme.typography.bodyLarge,
                     )
+                }
+            }
+        }
+
+        if (diagnostics.isNotEmpty()) {
+            Card(
+                shape = MaterialTheme.shapes.extraLarge,
+                colors = CardDefaults.cardColors(containerColor = scheme.surfaceContainer),
+            ) {
+                Column(Modifier.padding(20.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Letzter Aufruf", style = MaterialTheme.typography.titleMedium)
+                    SelectionContainer {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            diagnostics.forEach { (k, v) ->
+                                Row {
+                                    Text(k, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, modifier = Modifier.width(120.dp))
+                                    Text(v, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

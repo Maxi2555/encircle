@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Android 17+: required before the system hands screen content (text and screenshot) to an assistant. -->
+    <uses-permission android:name="android.permission.READ_ASSIST_STRUCTURE_SCREEN_CONTENT" />
+
     <application
         android:name=".EncircleApp"
         android:allowBackup="true"
