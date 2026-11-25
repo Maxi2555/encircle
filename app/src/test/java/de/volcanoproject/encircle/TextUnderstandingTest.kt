@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Encircle contributors
 
-package io.github.maxi2555.encircle
+package de.volcanoproject.encircle
 
 import androidx.compose.ui.geometry.Rect
-import io.github.maxi2555.encircle.analysis.EntityFinder
-import io.github.maxi2555.encircle.analysis.EntityKind
-import io.github.maxi2555.encircle.analysis.LayoutBuilder
-import io.github.maxi2555.encircle.analysis.RawElement
-import io.github.maxi2555.encircle.analysis.RawLine
+import de.volcanoproject.encircle.analysis.EntityFinder
+import de.volcanoproject.encircle.analysis.EntityKind
+import de.volcanoproject.encircle.analysis.LayoutBuilder
+import de.volcanoproject.encircle.analysis.RawElement
+import de.volcanoproject.encircle.analysis.RawLine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

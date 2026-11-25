@@ -61,13 +61,16 @@ jobs:
         with:
           cache-read-only: true
 
-      - name: Test and build signed APKs
+      - name: Test and build signed APKs and app bundle
         env:
           ENCIRCLE_KEYSTORE_FILE: ${{ runner.temp }}/release.jks
           ENCIRCLE_KEYSTORE_PASSWORD: ${{ secrets.ENCIRCLE_KEYSTORE_PASSWORD }}
           ENCIRCLE_KEY_ALIAS: ${{ secrets.ENCIRCLE_KEY_ALIAS }}
           ENCIRCLE_KEY_PASSWORD: ${{ secrets.ENCIRCLE_KEY_PASSWORD }}
-        run: ./gradlew testDebugUnitTest assembleRelease --stacktrace
+        # Two invocations: per-ABI APKs and the app bundle cannot be built together.
+        run: |
+          ./gradlew testDebugUnitTest assembleRelease --stacktrace
+          ./gradlew bundleRelease --stacktrace
 
       - name: Collect APKs, checksums and notes
         run: |
@@ -75,7 +78,9 @@ jobs:
           for abi in arm64-v8a armeabi-v7a x86_64 universal; do
             cp "app/build/outputs/apk/release/app-$abi-release.apk" "dist/encircle-$VERSION-$abi.apk"
           done
-          (cd dist && sha256sum *.apk > SHA256SUMS.txt)
+          # The app bundle is what Google Play expects; it is signed with the same key.
+          cp app/build/outputs/bundle/release/app-release.aab "dist/encircle-$VERSION.aab"
+          (cd dist && sha256sum *.apk *.aab > SHA256SUMS.txt)
 
           apksigner=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
           cert=$("$apksigner" verify --print-certs "dist/encircle-$VERSION-universal.apk" \
@@ -90,7 +95,7 @@ jobs:
             echo
             echo "### Downloads"
             echo
-            echo "Most phones need \`encircle-$VERSION-arm64-v8a.apk\`. Checksums are in \`SHA256SUMS.txt\`."
+            echo "Most phones need \`encircle-$VERSION-arm64-v8a.apk\`. The \`.aab\` file is the app bundle for Google Play. Checksums are in \`SHA256SUMS.txt\`."
             echo
             echo "Signing certificate SHA-256: \`$cert\`"
           } >> notes.md

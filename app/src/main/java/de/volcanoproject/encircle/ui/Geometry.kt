@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Encircle contributors
 
-package io.github.maxi2555.encircle.ui
+package de.volcanoproject.encircle.ui
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect

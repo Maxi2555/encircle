@@ -31,7 +31,7 @@ To try your build, install it and choose Encircle as the digital assistant (see 
 
 ```sh
 adb install -r app/build/outputs/apk/release/app-arm64-v8a-release.apk
-adb shell cmd role add-role-holder android.app.role.ASSISTANT io.github.maxi2555.encircle
+adb shell cmd role add-role-holder android.app.role.ASSISTANT de.volcanoproject.encircle
 adb shell input keyevent KEYCODE_ASSIST
 ```
 
@@ -42,7 +42,7 @@ The app's start screen shows diagnostics of the last invocation (flags, screensh
 ## Project layout
 
 ```
-app/src/main/java/io/github/maxi2555/encircle/
+app/src/main/java/de/volcanoproject/encircle/
   assist/     VoiceInteractionService, session and window handling
   analysis/   OCR and barcode engines, layout rebuilding, link and code parsing
   ui/         Overlay state (OverlayController), drawing and gestures (OverlayScreen), theme

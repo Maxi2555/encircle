@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Encircle contributors
 
-package io.github.maxi2555.encircle
+package de.volcanoproject.encircle
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -39,10 +39,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import io.github.maxi2555.encircle.actions.SystemActions
-import io.github.maxi2555.encircle.assist.AssistService
-import io.github.maxi2555.encircle.ui.EncircleTheme
-import io.github.maxi2555.encircle.ui.LogoRing
+import de.volcanoproject.encircle.actions.SystemActions
+import de.volcanoproject.encircle.assist.AssistService
+import de.volcanoproject.encircle.ui.EncircleTheme
+import de.volcanoproject.encircle.ui.LogoRing
 
 class MainActivity : ComponentActivity() {
     private var isAssistant by mutableStateOf(false)

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Encircle contributors
 
-package io.github.maxi2555.encircle.ui
+package de.volcanoproject.encircle.ui
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -20,16 +20,16 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import io.github.maxi2555.encircle.R
-import io.github.maxi2555.encircle.actions.SystemActions
-import io.github.maxi2555.encircle.analysis.CodeContent
-import io.github.maxi2555.encircle.analysis.DetectedCode
-import io.github.maxi2555.encircle.analysis.EntityFinder
-import io.github.maxi2555.encircle.analysis.EntityKind
-import io.github.maxi2555.encircle.analysis.EntityMatch
-import io.github.maxi2555.encircle.analysis.TextEntity
-import io.github.maxi2555.encircle.analysis.ScreenAnalyzer
-import io.github.maxi2555.encircle.analysis.TextLayout
+import de.volcanoproject.encircle.R
+import de.volcanoproject.encircle.actions.SystemActions
+import de.volcanoproject.encircle.analysis.CodeContent
+import de.volcanoproject.encircle.analysis.DetectedCode
+import de.volcanoproject.encircle.analysis.EntityFinder
+import de.volcanoproject.encircle.analysis.EntityKind
+import de.volcanoproject.encircle.analysis.EntityMatch
+import de.volcanoproject.encircle.analysis.TextEntity
+import de.volcanoproject.encircle.analysis.ScreenAnalyzer
+import de.volcanoproject.encircle.analysis.TextLayout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -40,7 +40,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import android.os.SystemClock
-import io.github.maxi2555.encircle.Diagnostics
+import de.volcanoproject.encircle.Diagnostics
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min

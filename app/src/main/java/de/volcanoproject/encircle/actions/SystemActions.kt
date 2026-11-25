@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Encircle contributors
 
-package io.github.maxi2555.encircle.actions
+package de.volcanoproject.encircle.actions
 
 import android.content.ActivityNotFoundException
 import android.content.ClipData
@@ -18,7 +18,7 @@ import android.provider.CalendarContract
 import android.provider.Settings
 import android.util.Log
 import androidx.core.content.FileProvider
-import io.github.maxi2555.encircle.analysis.CodeContent
+import de.volcanoproject.encircle.analysis.CodeContent
 import java.io.File
 
 /** Thin wrappers around the system intents the overlay can fire. Each returns false if nothing handled it. */

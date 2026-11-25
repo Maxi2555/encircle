@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Encircle contributors
 
-package io.github.maxi2555.encircle.assist
+package de.volcanoproject.encircle.assist
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -20,9 +20,9 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import io.github.maxi2555.encircle.ui.EncircleTheme
-import io.github.maxi2555.encircle.ui.OverlayController
-import io.github.maxi2555.encircle.ui.OverlayScreen
+import de.volcanoproject.encircle.ui.EncircleTheme
+import de.volcanoproject.encircle.ui.OverlayController
+import de.volcanoproject.encircle.ui.OverlayScreen
 
 /**
  * The full-screen overlay. The system hands it a screenshot of whatever was on screen when the

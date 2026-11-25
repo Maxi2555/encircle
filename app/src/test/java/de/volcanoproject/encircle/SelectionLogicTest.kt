@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Encircle contributors
 
-package io.github.maxi2555.encircle
+package de.volcanoproject.encircle
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import io.github.maxi2555.encircle.analysis.CodeContent
-import io.github.maxi2555.encircle.analysis.CodeParser
-import io.github.maxi2555.encircle.analysis.TextBlock
-import io.github.maxi2555.encircle.analysis.TextLayout
-import io.github.maxi2555.encircle.analysis.TextLine
-import io.github.maxi2555.encircle.analysis.Word
-import io.github.maxi2555.encircle.ui.StrokeShape
-import io.github.maxi2555.encircle.ui.pointInPolygon
+import de.volcanoproject.encircle.analysis.CodeContent
+import de.volcanoproject.encircle.analysis.CodeParser
+import de.volcanoproject.encircle.analysis.TextBlock
+import de.volcanoproject.encircle.analysis.TextLayout
+import de.volcanoproject.encircle.analysis.TextLine
+import de.volcanoproject.encircle.analysis.Word
+import de.volcanoproject.encircle.ui.StrokeShape
+import de.volcanoproject.encircle.ui.pointInPolygon
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

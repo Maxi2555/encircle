@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Encircle contributors
 
-package io.github.maxi2555.encircle.ui
+package de.volcanoproject.encircle.ui
 
 import android.util.DisplayMetrics
 import android.view.View
@@ -108,13 +108,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
-import io.github.maxi2555.encircle.R
-import io.github.maxi2555.encircle.actions.SystemActions
-import io.github.maxi2555.encircle.analysis.CodeContent
-import io.github.maxi2555.encircle.analysis.DetectedCode
-import io.github.maxi2555.encircle.analysis.EntityKind
-import io.github.maxi2555.encircle.analysis.TextEntity
-import io.github.maxi2555.encircle.analysis.TextLayout
+import de.volcanoproject.encircle.R
+import de.volcanoproject.encircle.actions.SystemActions
+import de.volcanoproject.encircle.analysis.CodeContent
+import de.volcanoproject.encircle.analysis.DetectedCode
+import de.volcanoproject.encircle.analysis.EntityKind
+import de.volcanoproject.encircle.analysis.TextEntity
+import de.volcanoproject.encircle.analysis.TextLayout
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.DateFormat

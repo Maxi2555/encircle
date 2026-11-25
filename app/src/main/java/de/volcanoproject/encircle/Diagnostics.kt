@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Encircle contributors
 
-package io.github.maxi2555.encircle
+package de.volcanoproject.encircle
 
 import android.content.Context
 import java.text.DateFormat

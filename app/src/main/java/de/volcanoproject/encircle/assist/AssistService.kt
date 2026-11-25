@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Encircle contributors
 
-package io.github.maxi2555.encircle.assist
+package de.volcanoproject.encircle.assist
 
 import android.app.role.RoleManager
 import android.content.ComponentName

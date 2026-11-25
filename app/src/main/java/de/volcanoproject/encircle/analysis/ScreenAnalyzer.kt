@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Encircle contributors
 
-package io.github.maxi2555.encircle.analysis
+package de.volcanoproject.encircle.analysis
 
 import android.graphics.Bitmap
 import android.util.Log

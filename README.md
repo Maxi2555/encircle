@@ -61,7 +61,7 @@ AOSP drops any non-system assistant when a user or profile starts without a spee
 To fix it permanently, register Encircle's placeholder recognizer once over adb (`<user>` is the profile's user id from `adb shell pm list users`):
 
 ```sh
-adb shell settings --user <user> put secure voice_recognition_service io.github.maxi2555.encircle/.assist.StubRecognitionService
+adb shell settings --user <user> put secure voice_recognition_service de.volcanoproject.encircle/.assist.StubRecognitionService
 ```
 </details>
 

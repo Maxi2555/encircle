@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "io.github.maxi2555.encircle"
+    namespace = "de.volcanoproject.encircle"
     compileSdk {
         version = release(37) {
             minorApiLevel = 1
@@ -12,7 +12,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "io.github.maxi2555.encircle"
+        applicationId = "de.volcanoproject.encircle"
         minSdk = 29
         targetSdk = 37
         versionCode = 1
@@ -54,9 +54,12 @@ android {
         compose = true
     }
 
+    // Per-ABI APKs for GitHub releases. Google Play builds its own split APKs from the app bundle,
+    // and AGP cannot produce both in one invocation (issuetracker.google.com/402800800).
+    val buildingBundle = gradle.startParameter.taskNames.any { it.contains("bundle", ignoreCase = true) }
     splits {
         abi {
-            isEnable = true
+            isEnable = !buildingBundle
             reset()
             include("arm64-v8a", "armeabi-v7a", "x86_64")
             isUniversalApk = true
