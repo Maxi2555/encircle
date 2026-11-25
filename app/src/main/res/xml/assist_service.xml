@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:recognitionService="io.github.maxi2555.encircle.assist.StubRecognitionService"
+    android:sessionService="io.github.maxi2555.encircle.assist.AssistSessionService"
+    android:settingsActivity="io.github.maxi2555.encircle.MainActivity"
+    android:supportsAssist="true"
+    android:supportsLaunchVoiceAssistFromKeyguard="false"
+    android:supportsLocalInteraction="false" />
