@@ -24,7 +24,7 @@ import java.io.File
 /** Thin wrappers around the system intents the overlay can fire. Each returns false if nothing handled it. */
 object SystemActions {
     private const val TAG = "SystemActions"
-    private const val SHARED_DIR ="shared"
+    private const val SHARED_DIR = "shared"
     private const val SHARED_MAX_AGE_MS = 60 * 60 * 1000L
 
     fun copyText(context: Context, text: String, label: String = "Text", sensitive: Boolean = false) {
