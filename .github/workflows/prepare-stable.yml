@@ -25,7 +25,8 @@ jobs:
       - name: Compute version and notes
         id: version
         run: |
-          . <(bash scripts/version.sh stable)
+          bash scripts/version.sh stable > version.env
+          while IFS='=' read -r key value; do declare "$key=$value"; done < version.env
           if [ "$releasable" != true ]; then
             echo "::error::beta has no user-facing changes since $last. Nothing to release."
             exit 1
