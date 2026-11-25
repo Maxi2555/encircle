@@ -83,6 +83,7 @@ import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
@@ -377,31 +378,38 @@ private fun ScreenLayer(c: OverlayController, img: ImageBitmap, appear: () -> Fl
                 }
             }
 
-            // Barcodes: a flowing gradient outline and corner brackets that snap into place. The code itself
-            // takes on the colours of the main wave as it passes: its dark modules light up (screen blending
-            // tints dark pixels, white stays white).
+            // Barcodes: rounded corner marks that snap into place and a glow that stays outside the code.
+            // The code itself keeps the colours of the main wave: once the wave has passed, its dark modules
+            // stay lit in the palette (screen blending tints dark pixels, white stays white).
             val ca = codesIn.value
             val cv = ca.coerceIn(0f, 1f)
             val waveFrom = Offset(full.width / 2f, full.height)
             val waveReach = hypot(full.width / 2f, full.height)
-            val prism = Brush.horizontalGradient(glow.loop, 0f, full.width)
             for (code in c.codes) {
                 val p = codePaths[code.id] ?: continue
                 val selected = (selection as? Selection.Code)?.code?.id == code.id
                 val brush = spinBrush(glow.loop, code.center, deg + code.id * 47f)
                 val ww = wave.value
                 val d = (code.center - waveFrom).getDistance() / waveReach
-                val lit = if (ww > 0f && ww < 1f) (1f - abs(d - (ww * 1.2f - 0.1f)) * 3.5f).coerceIn(0f, 1f) else 0f
+                val front = ww * 1.2f - 0.1f
+                // Ahead of the wave: a glow builds up. Behind it: the colour stays.
+                val lit = when {
+                    ww <= 0f -> 0f
+                    ww >= 1f || d <= front -> 1f
+                    else -> (1f - (d - front) * 3.5f).coerceIn(0f, 1f)
+                }
                 if (lit > 0f) {
+                    val modules = Brush.linearGradient(glow.colors, code.bounds.topLeft, code.bounds.bottomRight)
                     clipPath(p) {
-                        drawRect(prism, code.bounds.topLeft, code.bounds.size, alpha = lit * 0.95f, blendMode = BlendMode.Screen)
+                        drawRect(modules, code.bounds.topLeft, code.bounds.size, alpha = lit, blendMode = BlendMode.Screen)
                     }
                 }
-                drawPath(p, brush, alpha = (if (selected) 0.16f else 0.10f) * cv)
-                drawPath(p, brush, alpha = 0.22f * cv, style = Stroke(width = 16f * u, join = StrokeJoin.Round))
-                drawPath(p, brush, alpha = 0.55f * cv, style = Stroke(width = 7f * u, join = StrokeJoin.Round))
-                drawPath(p, Color.White, alpha = 0.95f * cv, style = Stroke(width = (if (selected) 3.5f else 2.2f) * u, join = StrokeJoin.Round))
-                drawCodeBrackets(code, (1f - ca) * 22f * u + 12f * u, u, brush, cv)
+                // The corner marks outline an implicit border; the glow is cut out inside it.
+                clipPath(p, clipOp = ClipOp.Difference) {
+                    drawPath(p, brush, alpha = (if (selected) 0.32f else 0.2f) * cv, style = Stroke(width = 22f * u, join = StrokeJoin.Round))
+                    drawPath(p, brush, alpha = (if (selected) 0.5f else 0.32f) * cv, style = Stroke(width = 9f * u, join = StrokeJoin.Round))
+                }
+                drawCodeBrackets(code, (1f - ca) * 22f * u + 12f * u, u, brush, cv, if (selected) 4.5f else 3.5f)
             }
 
             // The main wave over the words.
@@ -527,8 +535,8 @@ private fun DrawScope.drawSheen(p: Path, b: Rect, t: Float) {
     }
 }
 
-/** L-shaped corner marks around a code, pushed out by [out] so they can spring inwards. */
-private fun DrawScope.drawCodeBrackets(code: DetectedCode, out: Float, u: Float, brush: Brush, alpha: Float) {
+/** Rounded corner marks around a code, pushed out by [out] so they can spring inwards. */
+private fun DrawScope.drawCodeBrackets(code: DetectedCode, out: Float, u: Float, brush: Brush, alpha: Float, width: Float) {
     if (alpha <= 0f) return
     val pts = code.corners
     val n = pts.size
@@ -541,14 +549,16 @@ private fun DrawScope.drawCodeBrackets(code: DetectedCode, out: Float, u: Float,
         val next = pts[(i + 1) % n]
         val toPrev = (prev - c0).let { v -> v / max(v.getDistance(), 1f) }
         val toNext = (next - c0).let { v -> v / max(v.getDistance(), 1f) }
-        val len = minOf(18f * u, (prev - c0).getDistance() * 0.28f, (next - c0).getDistance() * 0.28f)
+        val len = minOf(20f * u, (prev - c0).getDistance() * 0.3f, (next - c0).getDistance() * 0.3f)
+        val round = len * 0.55f
         val path = Path().apply {
             moveTo(pos.x + toPrev.x * len, pos.y + toPrev.y * len)
-            lineTo(pos.x, pos.y)
+            lineTo(pos.x + toPrev.x * round, pos.y + toPrev.y * round)
+            quadraticTo(pos.x, pos.y, pos.x + toNext.x * round, pos.y + toNext.y * round)
             lineTo(pos.x + toNext.x * len, pos.y + toNext.y * len)
         }
-        drawPath(path, brush, alpha = 0.45f * alpha, style = Stroke(width = 9f * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        drawPath(path, Color.White, alpha = alpha, style = Stroke(width = 3.5f * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawPath(path, brush, alpha = 0.45f * alpha, style = Stroke(width = (width + 6f) * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawPath(path, Color.White, alpha = alpha, style = Stroke(width = width * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
     }
 }
 
