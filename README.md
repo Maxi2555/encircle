@@ -4,7 +4,7 @@ Encircle imitiert die Bedienung von Circle to Search auf Android, sucht aber nic
 
 ## Funktionen
 
-- **Start per langem Druck** auf Home oder die Navigationsleiste. Encircle ist dafür als digitaler Assistent eingetragen, genau wie Circle to Search.
+- **Start per langem Druck** auf Home oder die Navigationsleiste, auf AOSP-Systemen mit Gestennavigation per Wisch aus der unteren Ecke. Encircle ist dafür als digitaler Assistent eingetragen, genau wie Circle to Search.
 - **Textauswahl wie bei Circle to Search:**
   - Tippen markiert ein Wort. Erneutes Tippen erweitert auf den Satz, dann auf den Absatz.
   - Langes Drücken markiert den Absatz.
@@ -22,12 +22,28 @@ Encircle imitiert die Bedienung von Circle to Search auf Android, sucht aber nic
 
 1. App installieren und öffnen.
 2. **Assistent auswählen** antippen und Encircle als App für den digitalen Assistenten wählen.
-3. In denselben Einstellungen **Text auf dem Bildschirm verwenden** und **Screenshot verwenden** einschalten.
-4. Falls das Gerät Circle to Search hat, dort ausschalten, damit der lange Druck den Assistenten startet:
-   - Pixel: Einstellungen › System › Navigationsmodus.
-   - Samsung: Einstellungen › Anzeige › Navigationsleiste.
+3. In denselben Einstellungen **Bildschirm- und App-Daten verwenden** einschalten, je nach System auch **Screenshot verwenden**.
+4. Den Einstieg passend zum Gerät einrichten:
+   - Drei-Tasten-Navigation: Home gedrückt halten startet Encircle.
+   - Gestennavigation auf GrapheneOS und anderen AOSP-Systemen: unter Einstellungen › System › Navigationsmodus › Zahnrad das Wischen zum Aufrufen des Assistenten einschalten. Ein Wisch schräg nach oben aus einer unteren Ecke startet dann Encircle. Langes Drücken auf die Leiste ist dort fest mit Circle to Search verbunden.
+   - Pixel mit Google-Launcher: Circle to Search unter Einstellungen › System › Navigationsmodus ausschalten.
+   - Samsung: Circle to Search unter Einstellungen › Anzeige › Navigationsleiste ausschalten.
 
 Android erlaubt Drittanbieter-Apps diesen Einstieg nur über die Assistenten-Rolle. Encircle ersetzt deshalb den bisherigen Assistenten, solange es ausgewählt ist.
+
+### GrapheneOS: Assistent nach Neustart verschwunden
+
+AOSP verwirft beim Start eines Nutzers oder Profils jeden Assistenten, der keine System-App ist, wenn keine Spracherkennung eingetragen ist. Auf GrapheneOS ist das der Normalfall. Encircle bleibt dann zwar ausgewählt, Android verbindet es aber nicht mehr. Die Startseite der App zeigt das als **Neu verbinden** an. Kurz **Keine** und dann wieder Encircle wählen behebt es bis zum nächsten Neustart.
+
+Dauerhaft lässt es sich einmalig per adb beheben. Dafür wird Encircles Platzhalter-Spracherkennung eingetragen. `<user>` ist die Nutzer-ID des Profils, `adb shell pm list users` zeigt sie an:
+
+```sh
+adb shell settings --user <user> put secure voice_recognition_service io.github.maxi2555.encircle/.assist.StubRecognitionService
+```
+
+### Android 17
+
+Ab Android 17 liefert das System einem Assistenten mit Ziel-SDK 37 nur noch, was er in seiner Dienstbeschreibung erklärt. Encircle erklärt in `res/xml/assist_service.xml` `usesAssistData` und `usesAssistScreenshots`. Android macht den Screenshot nur zusammen mit den Assistenzdaten. Ohne `usesAssistStructureScreenContent` enthalten diese Daten aber keinen Bildschirmtext der Apps. Encircle liest den Text ausschließlich per Texterkennung aus dem Screenshot.
 
 ## Bauen
 

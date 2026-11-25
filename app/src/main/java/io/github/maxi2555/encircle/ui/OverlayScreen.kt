@@ -741,7 +741,7 @@ private fun MissingScreenshot(c: OverlayController, appear: () -> Float) {
                 Text(
                     "Encircle hat keinen Screenshot bekommen. Entweder erlaubt die geöffnete App keine Screenshots, " +
                         "oder der Zugriff ist aus. Aktiviere in den Einstellungen des digitalen Assistenten " +
-                        "„Text auf dem Bildschirm verwenden“ und „Screenshot verwenden“.",
+                        "„Bildschirm- und App-Daten verwenden“, je nach System auch „Screenshot verwenden“.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Button(onClick = { if (SystemActions.openAssistSettings(context)) c.finishNow() }) {

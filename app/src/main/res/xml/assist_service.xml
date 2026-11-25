@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Android 17 (API 37) only hands a screenshot to assistants that declare it here. The screenshot
+     also requires assist data; without usesAssistStructureScreenContent that is only app metadata.
+     Encircle reads no view hierarchy and no on-screen text from apps. -->
 <voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:recognitionService="io.github.maxi2555.encircle.assist.StubRecognitionService"
     android:sessionService="io.github.maxi2555.encircle.assist.AssistSessionService"
     android:settingsActivity="io.github.maxi2555.encircle.MainActivity"
     android:supportsAssist="true"
     android:supportsLaunchVoiceAssistFromKeyguard="false"
-    android:supportsLocalInteraction="false" />
+    android:supportsLocalInteraction="false"
+    android:usesAssistData="true"
+    android:usesAssistScreenshots="true" />

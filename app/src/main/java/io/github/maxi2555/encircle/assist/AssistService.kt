@@ -1,5 +1,6 @@
 package io.github.maxi2555.encircle.assist
 
+import android.app.role.RoleManager
 import android.content.ComponentName
 import android.content.Context
 import android.os.Bundle
@@ -30,6 +31,19 @@ class AssistService : VoiceInteractionService() {
 
         fun isActive(context: Context): Boolean =
             isActiveService(context, ComponentName(context, AssistService::class.java))
+
+        /**
+         * True when Encircle holds the assistant role but Android did not connect the service.
+         * AOSP drops a non-system assistant whenever a user starts without a speech recognizer
+         * configured, which is the normal state on GrapheneOS. Choosing "None" and then Encircle
+         * again in the assistant settings reconnects it.
+         */
+        fun isRoleHeldButDisconnected(context: Context): Boolean {
+            if (isActive(context)) return false
+            val roles = context.getSystemService(RoleManager::class.java) ?: return false
+            return roles.isRoleAvailable(RoleManager.ROLE_ASSISTANT) &&
+                roles.isRoleHeld(RoleManager.ROLE_ASSISTANT)
+        }
 
         /** Opens the overlay programmatically, used by the "try it" button in the setup screen. */
         fun launchOverlay(): Boolean {

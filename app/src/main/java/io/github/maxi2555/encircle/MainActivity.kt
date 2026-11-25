@@ -43,6 +43,7 @@ import io.github.maxi2555.encircle.ui.LogoRing
 
 class MainActivity : ComponentActivity() {
     private var isAssistant by mutableStateOf(false)
+    private var isDisconnected by mutableStateOf(false)
     private var diagnostics by mutableStateOf(emptyList<Pair<String, String>>())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,6 +54,7 @@ class MainActivity : ComponentActivity() {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
                     SetupScreen(
                         isAssistant = isAssistant,
+                        isDisconnected = isDisconnected,
                         diagnostics = diagnostics,
                         onOpenSettings = { SystemActions.openAssistSettings(this) },
                         onTry = { AssistService.launchOverlay() },
@@ -65,6 +67,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         isAssistant = AssistService.isActive(this)
+        isDisconnected = AssistService.isRoleHeldButDisconnected(this)
         diagnostics = Diagnostics.read(this)
     }
 }
@@ -72,6 +75,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun SetupScreen(
     isAssistant: Boolean,
+    isDisconnected: Boolean,
     diagnostics: List<Pair<String, String>>,
     onOpenSettings: () -> Unit,
     onTry: () -> Unit,
@@ -109,13 +113,20 @@ private fun SetupScreen(
                     )
                     Spacer(Modifier.width(12.dp))
                     Text(
-                        if (isAssistant) "Bereit" else "Noch nicht eingerichtet",
+                        when {
+                            isAssistant -> "Bereit"
+                            isDisconnected -> "Neu verbinden"
+                            else -> "Noch nicht eingerichtet"
+                        },
                         style = MaterialTheme.typography.titleLarge,
                     )
                 }
                 Text(
                     if (isAssistant) {
                         "Encircle ist dein digitaler Assistent. Halte Home oder die Navigationsleiste gedrückt."
+                    } else if (isDisconnected) {
+                        "Encircle ist als Assistent gewählt, aber Android hat es nach einem Neustart abgemeldet. " +
+                            "Wähle in den Einstellungen kurz „Keine“ und dann wieder Encircle."
                     } else {
                         "Wähle Encircle als App für den digitalen Assistenten. Nur so startet Android die App per langem Druck auf Home."
                     },
@@ -130,7 +141,9 @@ private fun SetupScreen(
                         }
                         FilledTonalButton(onClick = onOpenSettings) { Text("Einstellungen") }
                     } else {
-                        Button(onClick = onOpenSettings) { Text("Assistent auswählen") }
+                        Button(onClick = onOpenSettings) {
+                            Text(if (isDisconnected) "Einstellungen öffnen" else "Assistent auswählen")
+                        }
                     }
                 }
             }
@@ -140,7 +153,7 @@ private fun SetupScreen(
             "Einrichtung",
             listOf(
                 "In den Einstellungen unter Standard-Apps › Digitaler Assistent Encircle wählen.",
-                "Dort „Text auf dem Bildschirm verwenden“ und „Screenshot verwenden“ einschalten.",
+                "Dort „Bildschirm- und App-Daten verwenden“ einschalten, je nach System auch „Screenshot verwenden“.",
                 "Drei-Tasten-Navigation: Home gedrückt halten startet Encircle.",
                 "Gestennavigation auf GrapheneOS und anderen AOSP-Systemen: Unter System › Navigationsmodus › Zahnrad das Wischen zum Aufrufen des Assistenten einschalten. Dann startet ein Wisch schräg nach oben aus einer unteren Ecke Encircle.",
                 "Pixel mit Google-Launcher: Circle to Search unter System › Navigationsmodus ausschalten, dann startet langes Drücken auf die Leiste Encircle.",
