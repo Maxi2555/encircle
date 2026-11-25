@@ -1,6 +1,6 @@
 <div align="center">
 
-# Encircle
+<img src="fastlane/metadata/android/en-US/images/featureGraphic.png" alt="Encircle: select, copy, share. Everything stays on your phone." width="100%">
 
 **Circle to Search, without the search.**
 Select text, links and codes anywhere on your Android screen, then copy, share or open them. Everything stays on your device.
