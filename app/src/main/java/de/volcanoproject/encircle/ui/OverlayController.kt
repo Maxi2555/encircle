@@ -41,6 +41,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import android.os.SystemClock
 import de.volcanoproject.encircle.Diagnostics
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -140,9 +141,9 @@ class OverlayController(private val context: Context, private val finish: () -> 
         }
         Diagnostics.put(context, "Screenshot", "${bitmap.width}×${bitmap.height} ${bitmap.config}")
         screenshotMissing = false
+        clearAnalysis()
         image = bitmap.asImageBitmap()
         haptics(HapticFeedbackConstants.VIRTUAL_KEY)
-        analysis?.cancel()
         analysis = scope.launch {
             val soft = withContext(Dispatchers.Default) { ScreenAnalyzer.softwareCopy(bitmap) }
             pixels = soft
@@ -152,6 +153,8 @@ class OverlayController(private val context: Context, private val finish: () -> 
                     ScreenAnalyzer.scanCodes(soft).also {
                         Diagnostics.put(context, "Codes", "${it.size} in ${SystemClock.elapsedRealtime() - t0} ms")
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Log.w(TAG, "scan failed", e)
                     Diagnostics.put(context, "Codes", "Fehler: ${e.javaClass.simpleName} ${e.message.orEmpty()}")
@@ -172,6 +175,8 @@ class OverlayController(private val context: Context, private val finish: () -> 
                         entities = withContext(Dispatchers.Default) { EntityFinder.find(result) }
                         result
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Log.w(TAG, "ocr failed", e)
                     Diagnostics.put(context, "Texterkennung", "Fehler: ${e.javaClass.simpleName} ${e.message.orEmpty()}")
@@ -182,14 +187,20 @@ class OverlayController(private val context: Context, private val finish: () -> 
         }
     }
 
-    fun reset() {
-        analysis?.cancel(); timeout?.cancel(); feedbackJob?.cancel()
-        image = null; pixels = null
-        screenshotMissing = false
+    private fun clearAnalysis() {
+        analysis?.cancel()
+        pixels = null
         layout = TextLayout.EMPTY; textReady = false
         codes = emptyList(); codesReady = false
         entities = emptyList()
         selection = Selection.None
+    }
+
+    fun reset() {
+        clearAnalysis()
+        timeout?.cancel(); feedbackJob?.cancel()
+        image = null
+        screenshotMissing = false
         feedback = null
         trail.clear(); strokeActive = false
         exiting = false
