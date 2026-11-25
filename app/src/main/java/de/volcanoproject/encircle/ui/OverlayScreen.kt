@@ -125,6 +125,7 @@ import java.text.DateFormat
 import java.util.Date
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
@@ -255,6 +256,23 @@ private fun ScreenLayer(c: OverlayController, img: ImageBitmap, appear: () -> Fl
             wave.snapTo(0f)
         }
     }
+    // After the activation light show, a quiet aurora stays for as long as Encircle is open,
+    // so it is always clear that the screen is frozen and being looked at.
+    val ambientIn = remember { Animatable(0f) }
+    LaunchedEffect(c.sessionId, done) {
+        if (done) {
+            delay(450)
+            ambientIn.animateTo(1f, tween(1500, easing = FastOutSlowInEasing))
+        } else {
+            ambientIn.snapTo(0f)
+        }
+    }
+    val drift = rememberInfiniteTransition(label = "aurora").animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(AURORA_PERIOD_MS, easing = LinearEasing), RepeatMode.Restart),
+        label = "drift",
+    )
     val entitiesIn = remember { Animatable(0f) }
     LaunchedEffect(c.entities) {
         entitiesIn.snapTo(0f)
@@ -309,6 +327,7 @@ private fun ScreenLayer(c: OverlayController, img: ImageBitmap, appear: () -> Fl
         }) {
             drawImage(img)
             drawRect(Color.Black, size = full, alpha = scrim * appear())
+            drawAurora(drift.value, ambientIn.value * appear(), glow, full)
 
             val si = selectIn.value
             val sa = si.coerceIn(0f, 1f)
@@ -424,8 +443,49 @@ private fun ScreenLayer(c: OverlayController, img: ImageBitmap, appear: () -> Fl
             drawHandle(end, false, glow.colors[2])
         }
 
-        drawActivation(shimmer(), edge(), deg, glow)
+        drawActivation(shimmer(), edge(), deg, glow, ambientIn.value, drift.value)
     }
+}
+
+/** One full drift cycle of the aurora behind the frozen screen. */
+private const val AURORA_PERIOD_MS = 16_000
+
+/**
+ * Three large, soft clouds of the glow palette drifting slowly over the frozen screen, plus a gentle
+ * vignette. Kept at low alpha so text stays readable; drawn below selections, codes and underlines.
+ */
+private fun DrawScope.drawAurora(t: Float, strength: Float, glow: GlowPalette, full: Size) {
+    if (strength <= 0f) return
+    val w = full.width
+    val h = full.height
+    val turn = 2f * PI.toFloat()
+    val clouds = listOf(
+        Triple(Offset(w * (0.18f + 0.14f * sin(turn * t)), h * (0.84f + 0.07f * cos(turn * t))), 0.62f, glow.at(0.05f)),
+        Triple(Offset(w * (0.82f + 0.12f * cos(turn * (t + 0.33f))), h * (0.18f + 0.08f * sin(turn * (t + 0.33f)))), 0.58f, glow.at(0.45f)),
+        Triple(Offset(w * (0.5f + 0.32f * sin(turn * (t + 0.6f))), h * (0.5f + 0.22f * cos(turn * 2f * t))), 0.48f, glow.at(0.75f)),
+    )
+    for ((centre, size, color) in clouds) {
+        val radius = h * size
+        drawCircle(
+            Brush.radialGradient(
+                listOf(color.copy(alpha = 0.16f * strength), color.copy(alpha = 0.06f * strength), Color.Transparent),
+                center = centre,
+                radius = radius,
+            ),
+            radius = radius,
+            center = centre,
+        )
+    }
+    // A soft darkening towards the corners frames the content like a stage.
+    drawRect(
+        Brush.radialGradient(
+            0.55f to Color.Transparent,
+            1f to Color.Black.copy(alpha = 0.22f * strength),
+            center = Offset(w / 2f, h / 2f),
+            radius = hypot(w / 2f, h / 2f),
+        ),
+        size = full,
+    )
 }
 
 /** Height of the activation colour band, as a share of the screen height. */
@@ -552,7 +612,7 @@ private fun DrawScope.drawHandle(center: Offset, start: Boolean, color: Color) {
  * Activation light show in screen space: a bloom rising from the bottom, a band of prism colours
  * sweeping to the top, and a frame of flowing colour that stays while [edge] is up.
  */
-private fun DrawScope.drawActivation(p: Float, edge: Float, degrees: Float, glow: GlowPalette) {
+private fun DrawScope.drawActivation(p: Float, edge: Float, degrees: Float, glow: GlowPalette, ambient: Float, drift: Float) {
     val w = size.width
     val h = size.height
     if (p > 0f && p < 1f) {
@@ -583,7 +643,10 @@ private fun DrawScope.drawActivation(p: Float, edge: Float, degrees: Float, glow
         )
         drawContext.canvas.restore()
     }
-    if (edge > 0f) {
+    // Four slow breaths per aurora cycle.
+    val breath = 0.5f + 0.5f * sin(drift * 8f * PI.toFloat())
+    val frame = max(edge, ambient * (0.22f + 0.16f * breath))
+    if (frame > 0f) {
         val brush = spinBrush(glow.loop, center, degrees * 1.4f)
         val corner = CornerRadius(34.dp.toPx())
         for ((width, alpha) in listOf(22.dp.toPx() to 0.14f, 11.dp.toPx() to 0.32f, 4.dp.toPx() to 0.95f)) {
@@ -592,7 +655,7 @@ private fun DrawScope.drawActivation(p: Float, edge: Float, degrees: Float, glow
                 topLeft = Offset(width / 2f, width / 2f),
                 size = Size(w - width, h - width),
                 cornerRadius = corner,
-                alpha = alpha * edge,
+                alpha = alpha * frame,
                 style = Stroke(width = width),
             )
         }
