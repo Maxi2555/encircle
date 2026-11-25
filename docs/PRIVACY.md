@@ -10,7 +10,7 @@ Android does not give Encircle a screenshot of apps that block screenshots (for 
 
 ## What happens with it
 
-- The screenshot and everything recognized in it stay in memory for the current session only and are discarded when the overlay closes.
+- The screenshot and everything recognized in it stay in memory for the current session only and are discarded when the overlay closes, unless you share or copy an image (see below).
 - Text and barcode recognition run entirely on the device: ML Kit's bundled model for text, zxing-cpp for codes.
 - **Encircle has no internet permission.** ML Kit normally declares network access for usage statistics; Encircle removes it in its manifest, so no data can be sent.
 - There is no account, no analytics, no crash reporting and no advertising.
@@ -18,7 +18,7 @@ Android does not give Encircle a screenshot of apps that block screenshots (for 
 ## What is stored
 
 - **Diagnostics of the last invocation** (time, invocation flags, screenshot size, number of recognized words and codes, timing) are stored in the app's private storage so they can be shown on the start screen. They contain no screen content.
-- When you **share or copy an image**, the cropped picture is written to the app's private cache and handed to the app you choose through a temporary content URI.
+- When you **share or copy an image**, the picture is written to the app's private cache and handed to the app you choose through a content URI. Files older than one hour are deleted the next time Encircle opens.
 - When you **copy** text, it goes to the system clipboard. Wi-Fi passwords are marked as sensitive, so Android hides them in clipboard previews.
 
 ## Actions

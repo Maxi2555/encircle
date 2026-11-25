@@ -24,6 +24,8 @@ import java.io.File
 /** Thin wrappers around the system intents the overlay can fire. Each returns false if nothing handled it. */
 object SystemActions {
     private const val TAG = "SystemActions"
+    private const val SHARED_DIR = "shared"
+    private const val SHARED_MAX_AGE_MS = 60 * 60 * 1000L
 
     fun copyText(context: Context, text: String, label: String = "Text", sensitive: Boolean = false) {
         val clip = ClipData.newPlainText(label, text)
@@ -126,10 +128,13 @@ object SystemActions {
             .setPrimaryClip(ClipData.newUri(context.contentResolver, "Bild", uri))
     }
 
+    fun pruneShared(context: Context) {
+        val cutoff = System.currentTimeMillis() - SHARED_MAX_AGE_MS
+        File(context.cacheDir, SHARED_DIR).listFiles()?.filter { it.lastModified() < cutoff }?.forEach { it.delete() }
+    }
+
     private fun writeShared(context: Context, name: String, write: (File) -> Unit): Uri? = try {
-        val dir = File(context.cacheDir, "shared").apply { mkdirs() }
-        // Keep the share folder small: only the latest few files are needed.
-        dir.listFiles()?.sortedByDescending { it.lastModified() }?.drop(4)?.forEach { it.delete() }
+        val dir = File(context.cacheDir, SHARED_DIR).apply { mkdirs() }
         val file = File(dir, name)
         write(file)
         FileProvider.getUriForFile(context, "${context.packageName}.files", file)
