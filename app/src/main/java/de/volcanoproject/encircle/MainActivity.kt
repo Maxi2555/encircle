@@ -173,7 +173,7 @@ private fun SetupScreen(
                 "Einkreisen markiert alles im Kreis. Ohne Text wird der Bereich als Bild ausgewählt.",
                 "Die Griffe an der Auswahl verschieben Anfang und Ende.",
                 "Erkannte QR- und Barcodes leuchten auf. Antippen zeigt Inhalt und Aktionen.",
-                "Die Leiste unten nach unten wischen oder Zurück schließt alles.",
+                "Die Leiste unten lässt sich nach oben schieben, um verdeckte Inhalte zu sehen. Ganz nach oben hinausschieben oder Zurück schließt Encircle.",
             ),
         )
 
