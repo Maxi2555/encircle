@@ -22,15 +22,18 @@ android {
     // Release signing comes from the environment (see docs/RELEASING.md). Without it, release
     // builds fall back to the local debug key so they can still be installed for testing.
     val keystorePath = System.getenv("ENCIRCLE_KEYSTORE_FILE")
-    val releaseSigning = if (!keystorePath.isNullOrBlank() && file(keystorePath).exists()) {
+    val releaseSigning = keystorePath?.takeIf { it.isNotBlank() }?.let { path ->
+        require(file(path).exists()) { "ENCIRCLE_KEYSTORE_FILE does not exist: $path" }
         signingConfigs.create("release") {
-            storeFile = file(keystorePath)
+            storeFile = file(path)
             storePassword = System.getenv("ENCIRCLE_KEYSTORE_PASSWORD")
             keyAlias = System.getenv("ENCIRCLE_KEY_ALIAS")
             keyPassword = System.getenv("ENCIRCLE_KEY_PASSWORD")
         }
-    } else {
-        null
+    }
+
+    if (releaseSigning == null) {
+        logger.warn("Release signing is not configured. Release builds will use the debug key.")
     }
 
     buildTypes {
