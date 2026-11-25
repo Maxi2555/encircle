@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.os.Build
 import android.util.Log
-import android.util.Patterns
 import android.view.HapticFeedbackConstants
 import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Stable
@@ -22,6 +21,10 @@ import io.github.maxi2555.encircle.R
 import io.github.maxi2555.encircle.actions.SystemActions
 import io.github.maxi2555.encircle.analysis.CodeContent
 import io.github.maxi2555.encircle.analysis.DetectedCode
+import io.github.maxi2555.encircle.analysis.EntityFinder
+import io.github.maxi2555.encircle.analysis.EntityKind
+import io.github.maxi2555.encircle.analysis.EntityMatch
+import io.github.maxi2555.encircle.analysis.TextEntity
 import io.github.maxi2555.encircle.analysis.ScreenAnalyzer
 import io.github.maxi2555.encircle.analysis.TextLayout
 import kotlinx.coroutines.CoroutineScope
@@ -81,6 +84,8 @@ class OverlayController(private val context: Context, private val finish: () -> 
     var layout by mutableStateOf(TextLayout.EMPTY); private set
     var textReady by mutableStateOf(false); private set
     var codes by mutableStateOf<List<DetectedCode>>(emptyList()); private set
+    /** Links, addresses, numbers found in the text; shown underlined and selected as one unit. */
+    var entities by mutableStateOf<List<TextEntity>>(emptyList()); private set
     var codesReady by mutableStateOf(false); private set
     var selection by mutableStateOf<Selection>(Selection.None); private set
     var feedback by mutableStateOf<String?>(null); private set
@@ -161,6 +166,7 @@ class OverlayController(private val context: Context, private val finish: () -> 
                         TextLayout.EMPTY
                     } else {
                         Diagnostics.put(context, "Texterkennung", "${result.words.size} Wörter in $ms ms")
+                        entities = withContext(Dispatchers.Default) { EntityFinder.find(result) }
                         result
                     }
                 } catch (e: Exception) {
@@ -179,6 +185,7 @@ class OverlayController(private val context: Context, private val finish: () -> 
         screenshotMissing = false
         layout = TextLayout.EMPTY; textReady = false
         codes = emptyList(); codesReady = false
+        entities = emptyList()
         selection = Selection.None
         feedback = null
         trail.clear(); strokeActive = false
@@ -211,21 +218,22 @@ class OverlayController(private val context: Context, private val finish: () -> 
             return
         }
         val cur = selection
-        val word = w..w
+        // A link, address or number is one unit, like a single word.
+        val unit = entityAt(w)?.let { it.first..it.last } ?: w..w
         // Tapping inside the current selection grows it: word, sentence, paragraph, then back to the word.
         val next = if (cur is Selection.Words && w in cur && cur.isRange) {
             val now = cur.first..cur.last
-            val sentence = layout.sentenceRange(w)
+            val sentence = layout.sentenceRange(unit.first).first..layout.sentenceRange(unit.last).last
             val block = layout.blockRange(w)
             when {
-                now == word && sentence != word -> sentence
-                (now == word || now == sentence) && block != now -> block
-                else -> word
+                now == unit && sentence != unit -> sentence
+                (now == unit || now == sentence) && block != now -> block
+                else -> unit
             }
         } else {
-            word
+            unit
         }
-        selectRange(next)
+        selectRange(next, if (unit.first != unit.last && next == unit) confirm() else HapticFeedbackConstants.CLOCK_TICK)
     }
 
     fun onLongPress(view: Offset) {
@@ -380,6 +388,16 @@ class OverlayController(private val context: Context, private val finish: () -> 
 
     // ---------------------------------------------------------------- selection helpers
 
+    fun entityAt(word: Int): TextEntity? = entities.firstOrNull { word in it }
+
+    /** The entity the current selection consists of exactly, if any. */
+    fun selectedEntity(): TextEntity? {
+        val s = selection as? Selection.Words ?: return null
+        return entities.firstOrNull { it.first == s.first && it.last == s.last && s.isRange }
+    }
+
+    fun selectEntity(e: TextEntity) = selectRange(e.first..e.last, confirm())
+
     private fun codeAt(p: Offset): DetectedCode? =
         codes.filter { c -> pointInPolygon(p, expandPolygon(c.corners, dp(12f))) }.minByOrNull { it.bounds.width * it.bounds.height }
 
@@ -427,19 +445,41 @@ class OverlayController(private val context: Context, private val finish: () -> 
     }
 
     private fun textActions(text: String, allSelected: Boolean): List<OverlayAction> = buildList {
-        val t = text.trim()
-        val url = findUrl(t)
-        val compact = !t.contains('\n') && t.length <= 64
-        when {
-            url != null -> add(OverlayAction("Link öffnen", R.drawable.ic_open, primary = true) { launchExternal { SystemActions.openUri(context, url) } })
-            compact && Patterns.EMAIL_ADDRESS.matcher(t).matches() ->
-                add(OverlayAction("E-Mail schreiben", R.drawable.ic_mail, primary = true) { launchExternal { SystemActions.email(context, t) } })
-            compact && t.count { it.isDigit() } >= 6 && Patterns.PHONE.matcher(t).matches() ->
-                add(OverlayAction("Anrufen", R.drawable.ic_call, primary = true) { launchExternal { SystemActions.dial(context, t) } })
+        val matches = EntityFinder.findIn(text)
+        // The selection is the entity itself, ignoring punctuation around it.
+        val exact = matches.singleOrNull()?.takeIf { text.length - (it.end - it.start) <= 3 }
+        if (exact != null) {
+            addAll(entityActions(exact, primary = true))
+            if (exact.kind != EntityKind.Iban && text.trim() != exact.value) {
+                add(OverlayAction("Kopieren", R.drawable.ic_copy) { copy(text) })
+            }
+            add(OverlayAction("Teilen", R.drawable.ic_share) { launchExternal { SystemActions.shareText(context, exact.value) } })
+            return@buildList
         }
-        add(OverlayAction("Kopieren", R.drawable.ic_copy, primary = isEmpty()) { copy(text) })
+        // A longer selection: copying comes first, the first link or address inside is offered next to it.
+        add(OverlayAction("Kopieren", R.drawable.ic_copy, primary = true) { copy(text) })
+        (matches.firstOrNull { it.kind == EntityKind.Link } ?: matches.firstOrNull())?.let { add(entityActions(it, primary = false).first()) }
         add(OverlayAction("Teilen", R.drawable.ic_share) { launchExternal { SystemActions.shareText(context, text) } })
         if (!allSelected) add(OverlayAction("Alles auswählen", R.drawable.ic_select_all) { selectAllText() })
+    }
+
+    private fun entityActions(m: EntityMatch, primary: Boolean): List<OverlayAction> = when (m.kind) {
+        EntityKind.Link -> listOf(
+            OverlayAction("Link öffnen", R.drawable.ic_open, primary) { launchExternal { SystemActions.openUri(context, m.value) } },
+            OverlayAction("Link kopieren", R.drawable.ic_link) { copy(m.value) },
+        )
+        EntityKind.Email -> listOf(
+            OverlayAction("E-Mail schreiben", R.drawable.ic_mail, primary) { launchExternal { SystemActions.email(context, m.value) } },
+            OverlayAction("Adresse kopieren", R.drawable.ic_copy) { copy(m.value) },
+        )
+        EntityKind.Phone -> listOf(
+            OverlayAction("Anrufen", R.drawable.ic_call, primary) { launchExternal { SystemActions.dial(context, m.value) } },
+            OverlayAction("SMS", R.drawable.ic_sms) { launchExternal { SystemActions.sms(context, m.value, null) } },
+            OverlayAction("Nummer kopieren", R.drawable.ic_copy) { copy(m.value) },
+        )
+        EntityKind.Iban -> listOf(
+            OverlayAction("IBAN kopieren", R.drawable.ic_copy, primary) { copy(m.value) },
+        )
     }
 
     private fun codeActions(c: DetectedCode): List<OverlayAction> = buildList {
@@ -494,9 +534,7 @@ class OverlayController(private val context: Context, private val finish: () -> 
             }
             is CodeContent.Product -> add(OverlayAction("Nummer kopieren", R.drawable.ic_copy, true) { copy(k.code) })
             is CodeContent.Text -> {
-                findUrl(k.text)?.let { url ->
-                    add(OverlayAction("Link öffnen", R.drawable.ic_open, true) { launchExternal { SystemActions.openUri(context, url) } })
-                }
+                EntityFinder.findIn(k.text).firstOrNull()?.let { addAll(entityActions(it, primary = true)) }
                 add(OverlayAction("Kopieren", R.drawable.ic_copy, isEmpty()) { copy(k.text) })
             }
         }
@@ -561,18 +599,5 @@ class OverlayController(private val context: Context, private val finish: () -> 
     companion object {
         private const val TAG = "Overlay"
         private const val OCR_TIMEOUT_MS = 6000L
-
-        /** First real-looking link in [text]; plain words with a dot are not enough. */
-        fun findUrl(text: String): String? {
-            val m = Patterns.WEB_URL.matcher(text)
-            while (m.find()) {
-                val u = m.group().trimEnd('.', ',', ';', ':', ')', '!', '?')
-                val lower = u.lowercase()
-                val looksReal = lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("www.") ||
-                    (u == text.trim() && Regex("""^[\w-]+(\.[\w-]+)*\.[a-z]{2,}(/\S*)?$""", RegexOption.IGNORE_CASE).matches(u))
-                if (looksReal) return if (lower.startsWith("http")) u else "https://$u"
-            }
-            return null
-        }
     }
 }

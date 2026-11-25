@@ -12,11 +12,13 @@ Encircle imitiert die Bedienung von Circle to Search auf Android, sucht aber nic
   - Diagonal von Ecke zu Ecke eines Absatzes markiert den ganzen Absatz.
   - Einkreisen markiert alles im Kreis. Ohne Text darin wird der Bereich als Bild ausgewählt.
   - Griffe an Anfang und Ende passen die Auswahl an.
+- **Links, E-Mail-Adressen, Telefonnummern und IBANs** werden im erkannten Text gefunden und farbig unterstrichen, auch wenn sie über zwei Zeilen umbrechen oder als „name (at) firma (dot) de“ geschrieben sind. Ein Tippen markiert sie vollständig und bietet die passende Aktion an.
+- **Absätze wie auf dem Bildschirm:** Encircle setzt Wörter, Zeilen und Absätze selbst aus der Lage der erkannten Zeilen zusammen. Die Texterkennung zerteilt Absätze und Links oft. Encircle fügt sie anhand von Zeilenabstand, Schriftgröße, linker Kante und Inhalt wieder zusammen.
 - **Sauberer Text beim Kopieren:** Zeilen innerhalb eines Absatzes werden zusammengeführt, Silbentrennung am Zeilenende entfernt, Listen und kurze Zeilen behalten ihre Umbrüche.
 - **Alle gängigen Codes** werden erkannt und hervorgehoben: QR, Micro-QR, rMQR, Data Matrix, Aztec, PDF417, MaxiCode, EAN, UPC, Code 128/39/93, ITF, Codabar, GS1 DataBar.
 - **Passende Aktionen je Inhalt:** Link öffnen, WLAN verbinden, Kontakt speichern, Termin eintragen, anrufen, E-Mail oder SMS schreiben, Ort in Karten öffnen, kopieren, teilen.
 - **Leiste unten** im Stil der Suchleiste. Nach unten wischen oder Zurück schließt alles.
-- Material You mit dynamischen Farben, hell und dunkel.
+- Material You mit dynamischen Farben, hell und dunkel. Die Leuchteffekte nutzen kräftigere Farben, die aus der Akzentfarbe des Hintergrundbilds abgeleitet sind: ein farbiger Rand während der Erkennung, eine Farbwelle über den Text, und bei QR-Codes füllen sich die dunklen Module mit Licht.
 
 ## Einrichtung auf dem Gerät
 
@@ -58,7 +60,7 @@ Für aktuelle Handys die APK `app/build/outputs/apk/release/app-arm64-v8a-releas
 Für flüssige Animationen den Release-Build verwenden. Compose läuft im Debug-Build deutlich langsamer.
 
 ```sh
-./gradlew testDebugUnitTest   # Auswahl-Logik und Code-Parser
+./gradlew testDebugUnitTest   # Auswahl-Logik, Absätze, Link-Erkennung, Code-Parser
 ```
 
 ## Aufbau
@@ -67,7 +69,8 @@ Für flüssige Animationen den Release-Build verwenden. Compose läuft im Debug-
 | --- | --- |
 | Assistenten-Dienst und Sitzung | `assist/AssistService.kt`, `assist/OverlaySession.kt` |
 | Texterkennung und Barcode-Scan | `analysis/ScreenAnalyzer.kt` |
-| Wörter, Zeilen, Absätze, Textzusammenbau | `analysis/TextLayout.kt` |
+| Wörter, Zeilen, Absätze, Textzusammenbau | `analysis/LayoutBuilder.kt`, `analysis/TextLayout.kt` |
+| Links, Adressen, Nummern, IBANs im Text | `analysis/Entities.kt` |
 | Auswertung von Code-Inhalten | `analysis/Codes.kt` |
 | Auswahl-Logik und Aktionen | `ui/OverlayController.kt` |
 | Oberfläche, Effekte, Gesten | `ui/OverlayScreen.kt` |

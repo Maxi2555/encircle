@@ -131,45 +131,13 @@ object ScreenAnalyzer {
         else -> if (f.name.startsWith("DATA_BAR")) "GS1 DataBar" else "Barcode"
     }
 
-    private fun Text.toLayout(): TextLayout {
-        val words = ArrayList<Word>()
-        val lines = ArrayList<TextLine>()
-        val blocks = ArrayList<TextBlock>()
-        for (b in textBlocks) {
-            val firstLine = lines.size
-            val firstWord = words.size
-            for (l in b.lines) {
-                val lineFirst = words.size
-                for (e in l.elements) {
-                    val r = e.boundingBox ?: continue
-                    if (e.text.isBlank()) continue
-                    words += Word(words.size, e.text, r.toRect(), lines.size, blocks.size)
-                }
-                if (words.size > lineFirst) {
-                    lines += TextLine(lines.size, blocks.size, lineFirst, words.size - 1, union(words, lineFirst, words.size - 1))
-                }
+    private fun Text.toLayout(): TextLayout = LayoutBuilder.build(
+        textBlocks.flatMapIndexed { bi, b ->
+            b.lines.map { l ->
+                RawLine(l.elements.mapNotNull { e -> e.boundingBox?.let { RawElement(e.text, it.toRect()) } }, bi)
             }
-            if (words.size > firstWord) {
-                blocks += TextBlock(blocks.size, firstWord, words.size - 1, firstLine, lines.size - 1, union(words, firstWord, words.size - 1))
-            }
-        }
-        return TextLayout(words, lines, blocks)
-    }
-
-    private fun union(words: List<Word>, from: Int, to: Int): Rect {
-        var l = Float.MAX_VALUE
-        var t = Float.MAX_VALUE
-        var r = -Float.MAX_VALUE
-        var b = -Float.MAX_VALUE
-        for (i in from..to) {
-            val box = words[i].box
-            if (box.left < l) l = box.left
-            if (box.top < t) t = box.top
-            if (box.right > r) r = box.right
-            if (box.bottom > b) b = box.bottom
-        }
-        return Rect(l, t, r, b)
-    }
+        },
+    )
 
     private fun AndroidRect.toRect() = Rect(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
 
