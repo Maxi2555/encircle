@@ -1,0 +1,25 @@
+name: Workflow lint
+
+# Static checks for GitHub Actions workflows: syntax, expressions, shell scripts (shellcheck)
+# and action inputs. Catches mistakes before a release workflow fails for real.
+on:
+  pull_request:
+    paths:
+      - .github/workflows/**
+      - .github/actionlint.yaml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    name: Workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: actionlint
+        uses: docker://rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 # 1.7.12
+        with:
+          args: -color

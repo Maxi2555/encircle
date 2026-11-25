@@ -33,8 +33,9 @@ jobs:
 
       - id: version
         run: |
-          bash scripts/version.sh beta | tee -a "$GITHUB_OUTPUT"
-          . <(bash scripts/version.sh beta)
+          bash scripts/version.sh beta > version.env
+          cat version.env >> "$GITHUB_OUTPUT"
+          while IFS='=' read -r key value; do declare "$key=$value"; done < version.env
           if [ "$releasable" = true ]; then
             echo "Publishing **$name** (versionCode $code)." >> "$GITHUB_STEP_SUMMARY"
           else
