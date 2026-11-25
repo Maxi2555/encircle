@@ -2,7 +2,7 @@
 
 All notable changes to Encircle are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+After version 0.1.1, release notes are generated from pull request titles and published with each [GitHub release](https://github.com/Maxi2555/encircle/releases). This file covers the releases before that.
 
 ## [0.1.1] - 2026-11-25
 
@@ -42,6 +42,5 @@ First public release.
 
 - Removed the network permissions that ML Kit declares, so screen content can never leave the device.
 
-[Unreleased]: https://github.com/Maxi2555/encircle/compare/v0.1.1...HEAD
 [0.1.1]: https://github.com/Maxi2555/encircle/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Maxi2555/encircle/releases/tag/v0.1.0

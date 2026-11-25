@@ -1,0 +1,35 @@
+name: Welcome
+
+# Greets people on their first issue or pull request. Never checks out code.
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  greet:
+    name: Greet first-time contributors
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/first-interaction@1c4688942c71f71d4f5502a26ea67c331730fa4d # v3.1.0
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          issue_message: |
+            Thanks for opening your first issue in Encircle! A maintainer will look at it soon.
+            If it is about text or a code that was not recognized, a screenshot of the original screen helps a lot.
+
+            Danke für dein erstes Issue! Deutsch ist hier genauso willkommen wie Englisch.
+          pr_message: |
+            Thanks for your first pull request to Encircle! 🎉
+            A few things that help it land quickly:
+            - It targets the **beta** branch.
+            - The title follows the [Conventional Commits](https://github.com/Maxi2555/encircle/blob/beta/CONTRIBUTING.md#pull-request-titles) format, e.g. `fix(ocr): keep wrapped IBANs together`.
+            - CI is green. The checks below show test results, coverage and lint findings.
+
+            Danke für deinen ersten Pull Request! Fragen gern auch auf Deutsch.

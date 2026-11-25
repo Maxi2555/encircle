@@ -1,0 +1,39 @@
+name: Stale issues and pull requests
+
+# Marks long-inactive issues and pull requests, then closes them if nothing happens.
+# Roadmap, help-wanted and security items are never touched.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    name: Mark and close stale items
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
+        with:
+          days-before-issue-stale: 60
+          days-before-issue-close: 14
+          days-before-pr-stale: 30
+          days-before-pr-close: 14
+          stale-issue-label: stale
+          stale-pr-label: stale
+          exempt-issue-labels: "help wanted,good first issue,security,pinned,enhancement"
+          exempt-pr-labels: "pinned,release,dependencies"
+          exempt-all-milestones: true
+          stale-issue-message: >-
+            This issue has had no activity for 60 days. It will be closed in 14 days unless
+            someone comments. If it still matters to you, a short update keeps it open.
+          stale-pr-message: >-
+            This pull request has had no activity for 30 days. It will be closed in 14 days
+            unless it is updated. Feel free to ask for help if you are stuck.
+          close-issue-message: Closed after a long period without activity. Comment to reopen the discussion.
+          close-pr-message: Closed after a long period without activity. You are welcome to reopen it.
+          operations-per-run: 60

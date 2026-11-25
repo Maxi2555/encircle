@@ -41,7 +41,7 @@ The app's start screen shows diagnostics of the last invocation (flags, screensh
 
 ## Project layout
 
-```
+```text
 app/src/main/java/de/volcanoproject/encircle/
   assist/     VoiceInteractionService, session and window handling
   analysis/   OCR and barcode engines, layout rebuilding, link and code parsing
@@ -49,18 +49,71 @@ app/src/main/java/de/volcanoproject/encircle/
   actions/    Intents to other apps: share, open, dial, Wi-Fi, contacts, calendar
 app/src/test/ Unit tests for selection, layout and recognition logic
 docs/         Architecture, privacy, release process
+scripts/      Version numbers, release notes and coverage summary used by the workflows
 ```
 
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains how the pieces fit together.
 
+## Branches
+
+```text
+feature branch ──PR──▶ beta ──release PR──▶ stable
+ (fix/…, feat/…)        │                     │
+                        ▼                     ▼
+                  pre-release           stable release
+                  v0.2.0-beta.3         v0.2.0
+```
+
+| Branch | Purpose |
+| --- | --- |
+| `beta` | Default branch. All work lands here first, through pull requests. Every merge with user-facing changes publishes a pre-release. |
+| `stable` | What users run. Only accepts the release pull request from `beta`. Every merge publishes a stable release. |
+| `feat/…`, `fix/…`, `docs/…` | Your working branches, created from `beta` and deleted after the merge. |
+
+Both `beta` and `stable` are protected for everyone, maintainers included: no direct pushes, no force pushes, and a pull request can only be merged when all required checks are green.
+
 ## Making changes
 
-1. Fork the repository and create a branch from `main`, for example `fix/wrapped-links` or `feat/spanish`.
+1. Fork the repository (or, with write access, just branch) and create a branch **from `beta`**, for example `fix/wrapped-iban` or `feat/spanish`.
 2. Keep each pull request to one topic. Small pull requests get reviewed faster.
 3. Add or update unit tests when you change logic in `analysis/` or the selection rules in `ui/`. Recognition fixes should include the failing input as a test case; the raw OCR fragments from a real device are ideal (see `TextUnderstandingTest`).
 4. Run `./gradlew testDebugUnitTest lintDebug assembleRelease` before pushing. CI runs the same.
-5. Update [CHANGELOG.md](CHANGELOG.md) under *Unreleased* if users will notice the change.
-6. Open the pull request and fill in the template. Screenshots or short screen recordings help a lot for anything visual.
+5. Open the pull request **against `beta`** with a title in the format below, and fill in the template. Screenshots or short screen recordings help a lot for anything visual.
+6. Once the checks are green, a maintainer merges it with **Squash and merge**. The pull request title becomes the commit on `beta`.
+
+### Pull request titles
+
+Titles follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/): `type(optional scope): description`. A check enforces it, because the titles drive version numbers and release notes.
+
+| Type | Use for | Effect on the next version |
+| --- | --- | --- |
+| `feat` | A new capability users notice | minor, e.g. 0.2.0 → 0.3.0 |
+| `fix` | A bug fix | patch, e.g. 0.2.0 → 0.2.1 |
+| `perf` | Faster or lighter without new behaviour | patch |
+| `refactor` | Code change without visible effect | patch |
+| `revert` | Undoing an earlier change | patch |
+| `docs` | Documentation only | none |
+| `test` | Tests only | none |
+| `build` | Gradle, dependencies (`build(deps): …` counts as patch) | none |
+| `ci` | Workflows and scripts | none |
+| `chore` | Anything else that users do not see | none |
+| `style` | Formatting only | none |
+
+Add `!` after the type for breaking changes, e.g. `feat(assist)!: require Android 12`. That bumps the major version (the minor version while Encircle is below 1.0).
+
+Good titles: `fix(ocr): keep wrapped IBANs together`, `feat(i18n): add Spanish translation`, `docs: explain the corner swipe`. Write the description in lower case, in the imperative, without a final period. Scopes are free text; common ones are `ocr`, `codes`, `ui`, `assist`, `i18n`, `deps`.
+
+### What the checks do
+
+| Check | What it does |
+| --- | --- |
+| Test, lint and build | Unit tests, Android lint, coverage and a release build. Test failures and lint findings appear as annotations in the diff, coverage per package as a comment. |
+| Branch rules | Makes sure only `beta` is merged into `stable`. |
+| Conventional title | Checks the pull request title. Fix it by editing the title; no new commit needed. |
+| Docs | Markdown style and links, when documentation changes. |
+| Labels | Adds area labels (`recognition`, `ui`, `platform`, …) and a size label automatically. |
+
+Coverage is reported, not enforced. Logic in `analysis/` should stay well covered; UI and Android glue are tested on devices.
 
 ### Code style
 
@@ -68,12 +121,13 @@ docs/         Architecture, privacy, release process
 - New source files start with `// SPDX-License-Identifier: Apache-2.0`.
 - Comments explain *why*, not *what*. Platform quirks (Android versions, OEM behaviour, OCR oddities) deserve a comment, because they are not obvious from the code.
 - No new dependency without a reason in the pull request. Prefer well-maintained open-source libraries with a license compatible with Apache-2.0. Proprietary dependencies are not accepted.
+- GitHub Actions are pinned to a full commit SHA with the version as a comment. Dependabot keeps them current.
 - Encircle must stay offline. Do not add network access, analytics or crash reporting that sends data off the device.
 - Keep the overlay fast: no work on the main thread that scales with screen content, and no noticeable delay before the frozen screen appears.
 
-### Commit messages
+### Changelog
 
-Write a short summary line in the imperative ("Fix wrapped links in German text"), optionally followed by a blank line and a body that explains why. Reference issues with `Fixes #123`.
+There is no changelog file to edit. Release notes are generated from the pull request titles, grouped by type and sorted alphabetically, and published with each GitHub release. A clear title is therefore the changelog entry.
 
 ## Licensing of contributions
 
@@ -81,4 +135,6 @@ Encircle is licensed under the [Apache License 2.0](LICENSE). By submitting a co
 
 ## Reviews and releases
 
-Maintainers review pull requests as time permits; a friendly ping after a week is fine. Releases are cut from `main` by pushing a version tag, see [docs/RELEASING.md](docs/RELEASING.md).
+Maintainers review pull requests as time permits; a friendly ping after a week is fine.
+
+Pre-releases appear automatically after merges into `beta`. When `beta` is ready for users, a maintainer starts the *Prepare stable release* workflow, which opens the release pull request into `stable`; merging it publishes the stable release. Details for maintainers are in [docs/RELEASING.md](docs/RELEASING.md).

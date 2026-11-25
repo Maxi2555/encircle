@@ -1,0 +1,15 @@
+# Link check configuration (lycheeverse/lychee).
+max_retries = 3
+timeout = 20
+accept = ["100..=103", "200..=299", "429"]
+
+exclude = [
+  # Pages that need a signed-in maintainer.
+  '^https://github\.com/Maxi2555/encircle/(settings|security/advisories/new)',
+  # Comparison links for tags that only exist after the next release.
+  '^https://github\.com/Maxi2555/encircle/compare/',
+  # Placeholder domains in examples.
+  'example\.(org|com)',
+]
+
+exclude_path = ["app/build", ".gradle"]

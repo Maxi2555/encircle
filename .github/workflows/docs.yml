@@ -1,0 +1,38 @@
+name: Docs
+
+# Markdown style and links. Runs on pull requests that touch documentation and weekly,
+# because external links can break without any change here.
+on:
+  pull_request:
+    paths:
+      - "**/*.md"
+      - .markdownlint-cli2.yaml
+      - lychee.toml
+  schedule:
+    - cron: "41 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  markdown:
+    name: Markdown style
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: DavidAnson/markdownlint-cli2-action@3ce8f712b5d8f31acd8e201be6d97e3d2bb23eb7 # v25.1.0
+
+  links:
+    name: Links
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: --config lychee.toml --no-progress "./**/*.md"
+          fail: true
+          jobSummary: true
+          token: ${{ secrets.GITHUB_TOKEN }}

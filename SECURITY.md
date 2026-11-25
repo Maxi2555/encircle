@@ -4,7 +4,7 @@ Encircle sees everything on your screen when you invoke it, so security and priv
 
 ## Supported versions
 
-Only the latest release receives fixes. Please check that the problem still exists there before reporting.
+Fixes go into the next release from the `beta` branch and then into the next stable release. Only the latest stable release and the latest pre-release are supported; please check that the problem still exists there before reporting.
 
 ## Reporting a vulnerability
 

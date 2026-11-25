@@ -1,0 +1,53 @@
+# Labels for pull requests by changed files (actions/labeler).
+
+recognition:
+  - changed-files:
+      - any-glob-to-any-file:
+          - app/src/main/java/**/analysis/**
+          - app/src/test/**
+
+ui:
+  - changed-files:
+      - any-glob-to-any-file:
+          - app/src/main/java/**/ui/**
+          - app/src/main/java/**/MainActivity.kt
+          - app/src/main/res/drawable/**
+          - app/src/main/res/mipmap*/**
+
+platform:
+  - changed-files:
+      - any-glob-to-any-file:
+          - app/src/main/java/**/assist/**
+          - app/src/main/java/**/actions/**
+          - app/src/main/AndroidManifest.xml
+          - app/src/main/res/xml/**
+
+i18n:
+  - changed-files:
+      - any-glob-to-any-file:
+          - app/src/main/res/values*/strings.xml
+          - fastlane/metadata/**/*.txt
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - docs/**
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**
+          - scripts/**
+
+build:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.gradle.kts"
+          - gradle/**
+          - app/proguard-rules.pro
+
+store:
+  - changed-files:
+      - any-glob-to-any-file:
+          - fastlane/**
