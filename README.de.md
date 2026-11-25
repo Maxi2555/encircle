@@ -1,6 +1,6 @@
 <div align="center">
 
-# Encircle
+<img src="fastlane/metadata/android/de-DE/images/featureGraphic.png" alt="Encircle: markieren, kopieren, teilen. Alles bleibt auf dem Gerät." width="100%">
 
 **Circle to Search, nur ohne Suche.**
 Text, Links und Codes überall auf dem Android-Bildschirm markieren, dann kopieren, teilen oder öffnen. Alles bleibt auf dem Gerät.
