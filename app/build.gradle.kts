@@ -15,8 +15,8 @@ android {
         applicationId = "de.volcanoproject.encircle"
         minSdk = 29
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
     }
 
     // Release signing comes from the environment (see docs/RELEASING.md). Without it, release

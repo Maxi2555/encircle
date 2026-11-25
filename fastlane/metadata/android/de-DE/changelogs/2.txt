@@ -1,0 +1,1 @@
+Links, E-Mail-Adressen, Telefonnummern und IBANs werden jetzt auch über Zeilenumbrüche hinweg erkannt. Code-Etiketten verdecken keinen Text mehr. Neues App-Symbol.

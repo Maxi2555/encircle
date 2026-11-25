@@ -1,0 +1,1 @@
+Links, e-mail addresses, phone numbers and IBANs are now recognized across line breaks. Code badges no longer cover text. New app icon.

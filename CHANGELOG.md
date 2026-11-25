@@ -4,6 +4,8 @@ All notable changes to Encircle are documented here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-25
+
 ### Added
 
 - Phone numbers, e-mail addresses and links are recognized across line breaks, including long links broken mid-word.
@@ -40,5 +42,6 @@ First public release.
 
 - Removed the network permissions that ML Kit declares, so screen content can never leave the device.
 
-[Unreleased]: https://github.com/Maxi2555/encircle/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Maxi2555/encircle/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Maxi2555/encircle/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Maxi2555/encircle/releases/tag/v0.1.0
