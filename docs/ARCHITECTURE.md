@@ -22,7 +22,7 @@ Android lets third-party apps react to the home long-press (or the assistant ges
 
 ## Pipeline per invocation
 
-```
+```text
 screenshot (hardware bitmap)
    │  copy to ARGB_8888
    ├──────────────► zxing-cpp ──► DetectedCode list ──► CodeParser (Wi-Fi, vCard, event, URL, …)

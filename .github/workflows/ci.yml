@@ -1,9 +1,10 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
+    branches: [beta, stable]
+  push:
+    branches: [beta, stable]
   workflow_dispatch:
 
 permissions:
@@ -14,27 +15,87 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  rules:
+    name: Branch rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Stable only accepts pull requests from beta
+        if: github.event_name == 'pull_request' && github.base_ref == 'stable'
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          if [ "$HEAD_REF" != beta ] || [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then
+            echo "::error::Pull requests into stable must come from beta. Please target beta instead."
+            exit 1
+          fi
+      - name: Branch rules satisfied
+        run: echo "Branch rules satisfied."
+
   build:
     name: Test, lint and build
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    permissions:
+      contents: read
+      checks: write # test result annotations
+      pull-requests: write # coverage comment
+      security-events: write # lint findings as code scanning annotations
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
         with:
           distribution: temurin
           java-version: 21
 
       # Also validates the Gradle wrapper checksum.
-      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
 
-      - name: Unit tests, lint and release build
-        run: ./gradlew testDebugUnitTest lintDebug assembleRelease --stacktrace
+      - name: Unit tests, lint, coverage and release build
+        run: ./gradlew testDebugUnitTest lintDebug koverXmlReportDebug assembleRelease --stacktrace --continue
+
+      - name: Test results
+        if: always() && hashFiles('app/build/test-results/testDebugUnitTest/*.xml') != ''
+        uses: mikepenz/action-junit-report@a16be3a69023e9bd7e748ede768b3282ea7b30ce # v6.7.1
+        with:
+          report_paths: app/build/test-results/testDebugUnitTest/*.xml
+          annotate_only: true
+          job_summary: true
+          detailed_summary: true
+          require_tests: true
+
+      - name: Coverage summary
+        if: always() && hashFiles('app/build/reports/kover/reportDebug.xml') != ''
+        run: |
+          python3 scripts/coverage-summary.py app/build/reports/kover/reportDebug.xml > coverage.md
+          cat coverage.md >> "$GITHUB_STEP_SUMMARY"
+
+      # Pull requests from forks get a read-only token, so they only see the job summary.
+      - name: Coverage comment
+        if: >-
+          always() && github.event_name == 'pull_request'
+          && github.event.pull_request.head.repo.full_name == github.repository
+          && hashFiles('coverage.md') != ''
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        with:
+          header: coverage
+          path: coverage.md
+
+      - name: Lint findings as annotations
+        if: >-
+          always() && hashFiles('app/build/reports/lint-results-debug.sarif') != ''
+          && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
+        with:
+          sarif_file: app/build/reports/lint-results-debug.sarif
+          category: android-lint
 
       - name: Upload test and lint reports
         if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: reports
           path: |
@@ -44,7 +105,7 @@ jobs:
 
       # Signed with the runner's throwaway debug key: for testing only, cannot update a release install.
       - name: Upload test APKs
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: encircle-test-apks-${{ github.sha }}
           path: app/build/outputs/apk/release/*.apk

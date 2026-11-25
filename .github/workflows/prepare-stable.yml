@@ -1,0 +1,54 @@
+name: Prepare stable release
+
+# Run by hand when beta is ready. Opens (or updates) the pull request from beta into stable,
+# with the computed version and the release notes. Merging it publishes the stable release.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  prepare:
+    name: Open release pull request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: beta
+          fetch-depth: 0
+
+      - name: Compute version and notes
+        id: version
+        run: |
+          . <(bash scripts/version.sh stable)
+          if [ "$releasable" != true ]; then
+            echo "::error::beta has no user-facing changes since $last. Nothing to release."
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          {
+            echo "Merging this pull request publishes **Encircle $name** (versionCode $code) as a stable release."
+            echo "Merge it with **Create a merge commit**, not squash, so beta and stable keep a shared history."
+            echo
+            echo "## Changes since ${last:-the beginning}"
+            echo
+            bash scripts/release-notes.sh "$last" HEAD
+          } > body.md
+
+      - name: Open or update the pull request
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          existing=$(gh pr list --base stable --head beta --state open --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            gh pr edit "$existing" --title "chore(release): $TAG" --body-file body.md
+            echo "Updated pull request #$existing for $TAG." >> "$GITHUB_STEP_SUMMARY"
+          else
+            url=$(gh pr create --base stable --head beta --title "chore(release): $TAG" --body-file body.md --label release)
+            echo "Opened $url for $TAG." >> "$GITHUB_STEP_SUMMARY"
+          fi

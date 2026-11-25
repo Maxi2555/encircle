@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kover)
 }
 
 android {
@@ -15,8 +16,10 @@ android {
         applicationId = "de.volcanoproject.encircle"
         minSdk = 29
         targetSdk = 37
-        versionCode = 2
-        versionName = "0.1.1"
+        // Release workflows pass the version computed from pull request titles (scripts/version.sh).
+        // Local builds are marked as development builds.
+        versionCode = providers.gradleProperty("encircle.versionCode").orNull?.toInt() ?: 1
+        versionName = providers.gradleProperty("encircle.versionName").orNull ?: "0.0.0-dev"
     }
 
     // Release signing comes from the environment (see docs/RELEASING.md). Without it, release
@@ -87,4 +90,16 @@ dependencies {
     implementation(libs.zxing.cpp)
 
     testImplementation(libs.junit)
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                // Generated code and Compose UI, which unit tests do not exercise.
+                classes("*.BuildConfig", "*.R", "*.R\$*", "*ComposableSingletons*")
+                annotatedBy("androidx.compose.runtime.Composable")
+            }
+        }
+    }
 }

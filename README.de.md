@@ -24,7 +24,9 @@ Encircle meldet sich als digitaler Assistent des Handys an. Beim Aufruf (Home ge
 
 ## Installation
 
-Die passende APK aus dem [neuesten Release](https://github.com/Maxi2555/encircle/releases) laden. Für fast alle aktuellen Handys ist das `encircle-<version>-arm64-v8a.apk`. Ab Android 10.
+Die passende APK aus dem [neuesten Release](https://github.com/Maxi2555/encircle/releases/latest) laden. Für fast alle aktuellen Handys ist das `encircle-<version>-arm64-v8a.apk`. Ab Android 10.
+
+Wer neue Funktionen früher ausprobieren möchte, findet Beta-Versionen wie `0.2.0-beta.3` unter den [Vorabversionen](https://github.com/Maxi2555/encircle/releases). Stable und Beta sind mit demselben Schlüssel signiert, ein Wechsel geht ohne Neuinstallation.
 
 ## Einrichtung
 
@@ -40,7 +42,7 @@ Auf GrapheneOS kann Android den Assistenten nach einem Neustart abmelden. Die Ap
 
 ## Mitmachen
 
-Fehlerberichte, Erkennungsprobleme, Ideen, Übersetzungen und Code sind willkommen, gern auch auf Deutsch. Siehe [CONTRIBUTING](CONTRIBUTING.md).
+Fehlerberichte, Erkennungsprobleme, Ideen, Übersetzungen und Code sind willkommen, gern auch auf Deutsch. Entwickelt wird auf dem Branch `beta`, siehe [CONTRIBUTING](CONTRIBUTING.md).
 
 ## Lizenz
 

@@ -5,7 +5,7 @@
 **Circle to Search, without the search.**
 Select text, links and codes anywhere on your Android screen, then copy, share or open them. Everything stays on your device.
 
-[![CI](https://github.com/Maxi2555/encircle/actions/workflows/ci.yml/badge.svg)](https://github.com/Maxi2555/encircle/actions/workflows/ci.yml)
+[![CI](https://github.com/Maxi2555/encircle/actions/workflows/ci.yml/badge.svg?branch=beta)](https://github.com/Maxi2555/encircle/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/Maxi2555/encircle?include_prereleases&sort=semver)](https://github.com/Maxi2555/encircle/releases)
 
@@ -41,6 +41,15 @@ Download the APK for your device from the [latest release](https://github.com/Ma
 
 Each release lists SHA-256 checksums. Requires Android 10 or newer.
 
+### Release channels
+
+| Channel | Where | For |
+| --- | --- | --- |
+| **Stable** | [Latest release](https://github.com/Maxi2555/encircle/releases/latest) | Everyday use |
+| **Beta** | [Pre-releases](https://github.com/Maxi2555/encircle/releases), e.g. `0.2.0-beta.3` | Trying new features early and reporting problems |
+
+Both are signed with the same key, so you can switch between them without reinstalling. Beta versions always have a higher version code than the stable release before them.
+
 ## Set up
 
 1. Open Encircle and tap **Assistent auswählen** (choose assistant). Pick Encircle as the digital assistant app.
@@ -63,6 +72,7 @@ To fix it permanently, register Encircle's placeholder recognizer once over adb 
 ```sh
 adb shell settings --user <user> put secure voice_recognition_service de.volcanoproject.encircle/.assist.StubRecognitionService
 ```
+
 </details>
 
 ## Build
@@ -75,7 +85,7 @@ Requirements: JDK 17 or newer and the Android SDK. The build downloads the platf
 ./gradlew lintDebug            # Android lint
 ```
 
-Without signing credentials, release builds are signed with your local debug key so they install directly. Official releases are built and signed by [GitHub Actions](.github/workflows/release.yml), see [RELEASING](docs/RELEASING.md). Judge performance on release builds; Compose is much slower in debug builds.
+Without signing credentials, release builds are signed with your local debug key so they install directly. Official releases are built, versioned and signed by GitHub Actions, see [RELEASING](docs/RELEASING.md). Judge performance on release builds; Compose is much slower in debug builds.
 
 ## How it works
 
@@ -83,7 +93,7 @@ Encircle is a `VoiceInteractionService`. The system hands its session a screensh
 
 ## Contributing
 
-Bug reports, recognition problems, ideas, translations and code are all welcome. Please read [CONTRIBUTING](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). Report security issues as described in [SECURITY](SECURITY.md), not in public issues.
+Bug reports, recognition problems, ideas, translations and code are all welcome. Development happens on the `beta` branch; please read [CONTRIBUTING](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). Report security issues as described in [SECURITY](SECURITY.md), not in public issues.
 
 ## License
 

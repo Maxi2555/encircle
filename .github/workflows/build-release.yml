@@ -1,0 +1,102 @@
+name: Build signed release
+
+# Reusable: builds, tests and signs APKs and the app bundle for one version.
+# Called by beta-release.yml and stable-release.yml.
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Commit to build
+        required: true
+        type: string
+      version_name:
+        required: true
+        type: string
+      version_code:
+        required: true
+        type: string
+    outputs:
+      certificate:
+        description: SHA-256 digest of the signing certificate
+        value: ${{ jobs.build.outputs.certificate }}
+    secrets:
+      ENCIRCLE_KEYSTORE_BASE64:
+        required: true
+      ENCIRCLE_KEYSTORE_PASSWORD:
+        required: true
+      ENCIRCLE_KEY_ALIAS:
+        required: true
+      ENCIRCLE_KEY_PASSWORD:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and sign ${{ inputs.version_name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    outputs:
+      certificate: ${{ steps.collect.outputs.certificate }}
+    env:
+      VERSION: ${{ inputs.version_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Restore signing key
+        env:
+          KEYSTORE: ${{ secrets.ENCIRCLE_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then
+            echo "::error::Signing secrets are missing. See docs/RELEASING.md."
+            exit 1
+          fi
+          echo "$KEYSTORE" | base64 --decode > "$RUNNER_TEMP/release.jks"
+
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+        with:
+          cache-read-only: true
+
+      # Two invocations: per-ABI APKs and the app bundle cannot be built together.
+      - name: Test and build signed APKs and app bundle
+        env:
+          ENCIRCLE_KEYSTORE_FILE: ${{ runner.temp }}/release.jks
+          ENCIRCLE_KEYSTORE_PASSWORD: ${{ secrets.ENCIRCLE_KEYSTORE_PASSWORD }}
+          ENCIRCLE_KEY_ALIAS: ${{ secrets.ENCIRCLE_KEY_ALIAS }}
+          ENCIRCLE_KEY_PASSWORD: ${{ secrets.ENCIRCLE_KEY_PASSWORD }}
+          VERSION_ARGS: -Pencircle.versionName=${{ inputs.version_name }} -Pencircle.versionCode=${{ inputs.version_code }}
+        run: |
+          ./gradlew testDebugUnitTest assembleRelease $VERSION_ARGS --stacktrace
+          ./gradlew bundleRelease $VERSION_ARGS --stacktrace
+
+      - name: Collect files and checksums
+        id: collect
+        run: |
+          mkdir dist
+          for abi in arm64-v8a armeabi-v7a x86_64 universal; do
+            cp "app/build/outputs/apk/release/app-$abi-release.apk" "dist/encircle-$VERSION-$abi.apk"
+          done
+          cp app/build/outputs/bundle/release/app-release.aab "dist/encircle-$VERSION.aab"
+          (cd dist && sha256sum *.apk *.aab > SHA256SUMS.txt)
+          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          cert=$("$apksigner" verify --print-certs "dist/encircle-$VERSION-universal.apk" \
+            | sed -n 's/.*certificate SHA-256 digest: //p' | head -1)
+          echo "certificate=$cert" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: release-${{ inputs.version_name }}
+          path: dist/
+          retention-days: 7
+
+      - name: Remove signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"
