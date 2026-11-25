@@ -1,0 +1,10 @@
+<p>Encircle bringt die Bedienung von Circle to Search auf jedes Android-Handy, nur ohne Suche. Wie einen Assistenten aufrufen, der Bildschirm friert ein, und du wählst genau aus, was du brauchst.</p>
+<ul>
+<li><b>Intelligente Textauswahl:</b> Tippen für ein Wort, erneut für den Satz, noch einmal für den Absatz. Wischen wie ein Textmarker, diagonal über einen ganzen Absatz, oder einfach einkreisen.</li>
+<li><b>Links, E-Mail-Adressen, Telefonnummern und IBANs</b> werden unterstrichen und mit einem Tippen markiert, auch über Zeilenumbrüche hinweg.</li>
+<li><b>Alle gängigen Codes:</b> QR, Data Matrix, Aztec, PDF417, EAN/UPC, Code 128 und mehr. WLAN verbinden, Kontakte speichern, Termine eintragen, Links öffnen.</li>
+<li><b>Sauberer Text</b> beim Kopieren, ohne Zeilenumbrüche und Trennstriche mitten im Satz.</li>
+<li><b>Material You</b>-Farben und lebendige Animationen.</li>
+</ul>
+<p><b>Datenschutz von Grund auf:</b> Alles läuft auf dem Gerät, die App hat keine Internet-Berechtigung.</p>
+<p>Hinweis: Die Texterkennung nutzt Google ML Kit, das kostenlos, aber nicht quelloffen ist.</p>

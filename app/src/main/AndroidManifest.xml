@@ -2,6 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Encircle works fully offline. ML Kit declares network access for usage logging and optional
+         model downloads; the text model is bundled, so both are removed to keep screen content local. -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+
     <application
         android:name=".EncircleApp"
         android:allowBackup="true"

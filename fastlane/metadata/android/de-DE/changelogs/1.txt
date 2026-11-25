@@ -1,0 +1,1 @@
+Erstes öffentliches Release: intelligente Textauswahl, Link- und Code-Erkennung, komplett offline.

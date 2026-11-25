@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/Maxi2555/encircle/discussions
+    about: Ask how something works, share ideas or show what you built.
+  - name: Security vulnerability
+    url: https://github.com/Maxi2555/encircle/security/advisories/new
+    about: Report security or privacy problems privately.

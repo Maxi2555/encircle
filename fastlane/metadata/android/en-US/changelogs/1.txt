@@ -1,0 +1,1 @@
+First public release: smart text selection, link and code detection, fully offline.

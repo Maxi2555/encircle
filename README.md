@@ -1,87 +1,94 @@
+<div align="center">
+
 # Encircle
 
-Encircle imitiert die Bedienung von Circle to Search auf Android, sucht aber nichts. Home-Taste oder Navigationsleiste gedrückt halten, dann Text oder Codes auf dem eingefrorenen Bildschirm markieren und kopieren, teilen oder öffnen. Alles läuft offline auf dem Gerät.
+**Circle to Search, without the search.**
+Select text, links and codes anywhere on your Android screen, then copy, share or open them. Everything stays on your device.
 
-## Funktionen
+[![CI](https://github.com/Maxi2555/encircle/actions/workflows/ci.yml/badge.svg)](https://github.com/Maxi2555/encircle/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/Maxi2555/encircle?include_prereleases&sort=semver)](https://github.com/Maxi2555/encircle/releases)
 
-- **Start per langem Druck** auf Home oder die Navigationsleiste, auf AOSP-Systemen mit Gestennavigation per Wisch aus der unteren Ecke. Encircle ist dafür als digitaler Assistent eingetragen, genau wie Circle to Search.
-- **Textauswahl wie bei Circle to Search:**
-  - Tippen markiert ein Wort. Erneutes Tippen erweitert auf den Satz, dann auf den Absatz.
-  - Langes Drücken markiert den Absatz.
-  - Wischen über Text markiert wie ein Textmarker, live unter dem Finger.
-  - Diagonal von Ecke zu Ecke eines Absatzes markiert den ganzen Absatz.
-  - Einkreisen markiert alles im Kreis. Ohne Text darin wird der Bereich als Bild ausgewählt.
-  - Griffe an Anfang und Ende passen die Auswahl an.
-- **Links, E-Mail-Adressen, Telefonnummern und IBANs** werden im erkannten Text gefunden und farbig unterstrichen, auch wenn sie über zwei Zeilen umbrechen oder als „name (at) firma (dot) de“ geschrieben sind. Ein Tippen markiert sie vollständig und bietet die passende Aktion an.
-- **Absätze wie auf dem Bildschirm:** Encircle setzt Wörter, Zeilen und Absätze selbst aus der Lage der erkannten Zeilen zusammen. Die Texterkennung zerteilt Absätze und Links oft. Encircle fügt sie anhand von Zeilenabstand, Schriftgröße, linker Kante und Inhalt wieder zusammen.
-- **Sauberer Text beim Kopieren:** Zeilen innerhalb eines Absatzes werden zusammengeführt, Silbentrennung am Zeilenende entfernt, Listen und kurze Zeilen behalten ihre Umbrüche.
-- **Alle gängigen Codes** werden erkannt und hervorgehoben: QR, Micro-QR, rMQR, Data Matrix, Aztec, PDF417, MaxiCode, EAN, UPC, Code 128/39/93, ITF, Codabar, GS1 DataBar.
-- **Passende Aktionen je Inhalt:** Link öffnen, WLAN verbinden, Kontakt speichern, Termin eintragen, anrufen, E-Mail oder SMS schreiben, Ort in Karten öffnen, kopieren, teilen.
-- **Leiste unten** im Stil der Suchleiste. Nach unten wischen oder Zurück schließt alles.
-- Material You mit dynamischen Farben, hell und dunkel. Die Leuchteffekte nutzen kräftigere Farben, die aus der Akzentfarbe des Hintergrundbilds abgeleitet sind: ein farbiger Rand während der Erkennung, eine Farbwelle über den Text, und wenn die Welle über QR- und Barcodes läuft, leuchten deren dunkle Module in diesen Farben auf.
+[Deutsch](README.de.md)
 
-## Einrichtung auf dem Gerät
+</div>
 
-1. App installieren und öffnen.
-2. **Assistent auswählen** antippen und Encircle als App für den digitalen Assistenten wählen.
-3. In denselben Einstellungen **Bildschirm- und App-Daten verwenden** einschalten, je nach System auch **Screenshot verwenden**.
-4. Den Einstieg passend zum Gerät einrichten:
-   - Drei-Tasten-Navigation: Home gedrückt halten startet Encircle.
-   - Gestennavigation auf GrapheneOS und anderen AOSP-Systemen: unter Einstellungen › System › Navigationsmodus › Zahnrad das Wischen zum Aufrufen des Assistenten einschalten. Ein Wisch schräg nach oben aus einer unteren Ecke startet dann Encircle. Langes Drücken auf die Leiste ist dort fest mit Circle to Search verbunden.
-   - Pixel mit Google-Launcher: Circle to Search unter Einstellungen › System › Navigationsmodus ausschalten.
-   - Samsung: Circle to Search unter Einstellungen › Anzeige › Navigationsleiste ausschalten.
+---
 
-Android erlaubt Drittanbieter-Apps diesen Einstieg nur über die Assistenten-Rolle. Encircle ersetzt deshalb den bisherigen Assistenten, solange es ausgewählt ist.
+Encircle registers as your phone's digital assistant. When you invoke it (long-press home, or the assistant gesture), it freezes the current screen and lets you pick what you need, the way Circle to Search does. It never sends anything anywhere: there is no search, no account and no network permission.
 
-### GrapheneOS: Assistent nach Neustart verschwunden
+## Features
 
-AOSP verwirft beim Start eines Nutzers oder Profils jeden Assistenten, der keine System-App ist, wenn keine Spracherkennung eingetragen ist. Auf GrapheneOS ist das der Normalfall. Encircle bleibt dann zwar ausgewählt, Android verbindet es aber nicht mehr. Die Startseite der App zeigt das als **Neu verbinden** an. Kurz **Keine** und dann wieder Encircle wählen behebt es bis zum nächsten Neustart.
+- **Smart text selection.** Tap a word, tap again for the sentence, a third time for the paragraph. Long-press selects the paragraph. Swipe over text like a highlighter, swipe diagonally across a paragraph to take all of it, or draw a circle around anything. Handles adjust the selection.
+- **Links, addresses, numbers.** Links, e-mail addresses, phone numbers and IBANs are found anywhere on screen and underlined, even when they wrap over two lines or are written as `name (at) example (dot) org`. One tap selects the whole thing and offers the right action.
+- **Every common barcode.** QR, Micro QR, rMQR, Data Matrix, Aztec, PDF417, MaxiCode, EAN/UPC, Code 128/39/93, ITF, Codabar and GS1 DataBar are detected and outlined. Wi-Fi codes connect, contact cards save, events go to the calendar, links open.
+- **Clean copies.** Lines are reflowed into paragraphs, hyphenation at line ends is removed, and lists keep their line breaks.
+- **Material You.** Dynamic colours from your wallpaper, light and dark theme, and lively but quick animations.
+- **Private by design.** Recognition runs entirely on the device and the app has no internet permission. See [PRIVACY](docs/PRIVACY.md).
 
-Dauerhaft lässt es sich einmalig per adb beheben. Dafür wird Encircles Platzhalter-Spracherkennung eingetragen. `<user>` ist die Nutzer-ID des Profils, `adb shell pm list users` zeigt sie an:
+The user interface is currently in German. Translations are very welcome, see [CONTRIBUTING](CONTRIBUTING.md).
+
+## Install
+
+Download the APK for your device from the [latest release](https://github.com/Maxi2555/encircle/releases):
+
+| File | For |
+| --- | --- |
+| `encircle-<version>-arm64-v8a.apk` | almost all current phones |
+| `encircle-<version>-armeabi-v7a.apk` | older 32-bit phones |
+| `encircle-<version>-x86_64.apk` | emulators, x86 tablets |
+| `encircle-<version>-universal.apk` | any device, larger download |
+
+Each release lists SHA-256 checksums. Requires Android 10 or newer.
+
+## Set up
+
+1. Open Encircle and tap **Assistent auswählen** (choose assistant). Pick Encircle as the digital assistant app.
+2. In the same settings, enable **Use screen content** and, where offered, **Use screenshot**.
+3. Choose how to invoke it:
+   - **Three-button navigation:** long-press home.
+   - **Gesture navigation on GrapheneOS and other AOSP-based systems:** enable the assistant swipe under *Settings › System › Navigation mode › ⚙*, then swipe diagonally up from a bottom corner. On these systems a long-press on the gesture handle is wired to Circle to Search and cannot reach other assistants.
+   - **Pixel with the Google launcher:** turn off Circle to Search under *Settings › System › Navigation mode*, then long-press the handle.
+   - **Samsung:** turn off Circle to Search under *Settings › Display › Navigation bar*.
+
+Android only gives this entry point to the assistant role, so Encircle replaces your current assistant while it is selected.
+
+<details>
+<summary>GrapheneOS: Encircle stops working after a reboot</summary>
+
+AOSP drops any non-system assistant when a user or profile starts without a speech recognizer configured, which is the default on GrapheneOS. Encircle then shows **Neu verbinden** (reconnect): select *None* and then Encircle again in the assistant settings.
+
+To fix it permanently, register Encircle's placeholder recognizer once over adb (`<user>` is the profile's user id from `adb shell pm list users`):
 
 ```sh
 adb shell settings --user <user> put secure voice_recognition_service io.github.maxi2555.encircle/.assist.StubRecognitionService
 ```
+</details>
 
-### Android 17
+## Build
 
-Ab Android 17 liefert das System einem Assistenten mit Ziel-SDK 37 nur noch, was er in seiner Dienstbeschreibung erklärt. Encircle erklärt in `res/xml/assist_service.xml` `usesAssistData` und `usesAssistScreenshots`. Android macht den Screenshot nur zusammen mit den Assistenzdaten. Ohne `usesAssistStructureScreenContent` enthalten diese Daten aber keinen Bildschirmtext der Apps. Encircle liest den Text ausschließlich per Texterkennung aus dem Screenshot.
-
-## Bauen
-
-Voraussetzungen: JDK 17 oder neuer und das Android SDK.
+Requirements: JDK 17 or newer and the Android SDK. The build downloads the platform it needs.
 
 ```sh
-./gradlew assembleRelease
+./gradlew assembleRelease      # APKs in app/build/outputs/apk/release/
+./gradlew testDebugUnitTest    # unit tests
+./gradlew lintDebug            # Android lint
 ```
 
-Für aktuelle Handys die APK `app/build/outputs/apk/release/app-arm64-v8a-release.apk` nehmen. Daneben entstehen APKs für ältere 32-Bit-Geräte, für x86_64-Emulatoren und eine universelle APK. Der Release-Build ist mit dem lokalen Debug-Schlüssel signiert, damit er sich direkt installieren lässt. Für eine Veröffentlichung einen eigenen Signaturschlüssel eintragen.
+Without signing credentials, release builds are signed with your local debug key so they install directly. Official releases are built and signed by [GitHub Actions](.github/workflows/release.yml), see [RELEASING](docs/RELEASING.md). Judge performance on release builds; Compose is much slower in debug builds.
 
-Für flüssige Animationen den Release-Build verwenden. Compose läuft im Debug-Build deutlich langsamer.
+## How it works
 
-```sh
-./gradlew testDebugUnitTest   # Auswahl-Logik, Absätze, Link-Erkennung, Code-Parser
-```
+Encircle is a `VoiceInteractionService`. The system hands its session a screenshot, which Encircle shows frozen while two engines run in parallel: [zxing-cpp](https://github.com/zxing-cpp/zxing-cpp) for barcodes and Google ML Kit for text. The raw OCR output is rebuilt into words, lines and paragraphs from geometry, and links and similar strings are detected on top of that. More in [ARCHITECTURE](docs/ARCHITECTURE.md).
 
-## Aufbau
+## Contributing
 
-| Bereich | Datei |
-| --- | --- |
-| Assistenten-Dienst und Sitzung | `assist/AssistService.kt`, `assist/OverlaySession.kt` |
-| Texterkennung und Barcode-Scan | `analysis/ScreenAnalyzer.kt` |
-| Wörter, Zeilen, Absätze, Textzusammenbau | `analysis/LayoutBuilder.kt`, `analysis/TextLayout.kt` |
-| Links, Adressen, Nummern, IBANs im Text | `analysis/Entities.kt` |
-| Auswertung von Code-Inhalten | `analysis/Codes.kt` |
-| Auswahl-Logik und Aktionen | `ui/OverlayController.kt` |
-| Oberfläche, Effekte, Gesten | `ui/OverlayScreen.kt` |
+Bug reports, recognition problems, ideas, translations and code are all welcome. Please read [CONTRIBUTING](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). Report security issues as described in [SECURITY](SECURITY.md), not in public issues.
 
-Beide Erkennungs-Engines werden beim Prozessstart vorgewärmt. Der Prozess bleibt aktiv, solange Encircle der Assistent ist, daher gibt es beim langen Druck keine Ladezeit. Text und Codes werden parallel erkannt, der eingefrorene Bildschirm erscheint sofort.
+## License
 
-## Lizenzen der Bausteine
+Encircle is licensed under the [Apache License 2.0](LICENSE).
 
-- [zxing-cpp](https://github.com/zxing-cpp/zxing-cpp), Apache-2.0: Barcode-Erkennung.
-- [Google ML Kit Text Recognition](https://developers.google.com/ml-kit/vision/text-recognition/v2/android), kostenlos nutzbar, aber nicht quelloffen: Texterkennung, komplett offline.
-- [Material Design Icons](https://github.com/google/material-design-icons), Apache-2.0.
-- Jetpack Compose und AndroidX, Apache-2.0.
+It bundles third-party components under their own terms, listed in [NOTICE](NOTICE) and [THIRD-PARTY-NOTICES](THIRD-PARTY-NOTICES.md). Text recognition uses **Google ML Kit**, which is free to use but **not open source**. Because of that, Encircle cannot be published on F-Droid yet. Replacing it with an open OCR engine is on the roadmap.
 
-ML Kit ist die einzige nicht quelloffene Komponente. Quelloffene Alternativen wie Tesseract sind auf ganzen Bildschirmen um ein Vielfaches langsamer und hätten die verzögerungsfreie Bedienung verhindert.
+Encircle is an independent project and is not affiliated with Google. "Circle to Search" is a trademark of Google LLC and is used here only to describe the interaction style.

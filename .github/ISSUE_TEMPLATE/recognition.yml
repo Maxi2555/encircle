@@ -1,0 +1,55 @@
+name: Recognition problem
+description: Text, a paragraph, a link, an address, a number or a code was not recognized, or recognized wrongly.
+labels: ["recognition", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        These reports directly improve Encircle. A screenshot of the original screen (without the overlay) is the most useful thing you can attach.
+        **Remove or blur anything personal before uploading.** If you cannot share the real screen, recreate the problem with dummy content.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What was affected?
+      multiple: true
+      options:
+        - Words or characters (OCR)
+        - Paragraph or sentence grouping
+        - Link
+        - E-mail address
+        - Phone number
+        - IBAN
+        - QR code or other 2D code
+        - Barcode
+        - Selection gesture (tap, swipe, circle)
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect, and what happened?
+      placeholder: |
+        Expected: tapping "example.org/foo" selects the whole link.
+        Actual: only "example." is selected.
+    validations:
+      required: true
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot of the original screen
+      description: Taken with the normal system screenshot, without Encircle open.
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Where was it?
+      description: App or website, font or language if relevant.
+      placeholder: Firefox, a German news site; e-mail app with a dark theme
+  - type: input
+    id: version
+    attributes:
+      label: Encircle version and device
+      placeholder: 0.1.0 on Pixel 10 Pro, GrapheneOS
+    validations:
+      required: true

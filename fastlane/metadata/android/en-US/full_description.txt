@@ -1,0 +1,10 @@
+<p>Encircle brings the Circle to Search way of working to any Android phone, without the search. Invoke it like an assistant, and the screen freezes so you can pick exactly what you need.</p>
+<ul>
+<li><b>Smart text selection:</b> tap for a word, again for the sentence, again for the paragraph. Swipe like a highlighter, swipe diagonally for a whole paragraph, or circle anything.</li>
+<li><b>Links, e-mail addresses, phone numbers and IBANs</b> are underlined and selected with one tap, even when they wrap over two lines.</li>
+<li><b>All common barcodes:</b> QR, Data Matrix, Aztec, PDF417, EAN/UPC, Code 128 and more. Connect to Wi-Fi, save contacts, add events, open links.</li>
+<li><b>Clean copies</b> with reflowed lines and no stray hyphens.</li>
+<li><b>Material You</b> colours and lively animations.</li>
+</ul>
+<p><b>Private by design:</b> everything runs on the device and the app has no internet permission.</p>
+<p>Note: text recognition uses Google ML Kit, which is free to use but not open source. The user interface is currently in German.</p>

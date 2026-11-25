@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 The Encircle contributors
+
 package io.github.maxi2555.encircle
 
 import android.os.Bundle
@@ -210,7 +213,9 @@ private fun SetupScreen(
         }
 
         Text(
-            "Barcodes: zxing-cpp (Apache-2.0). Texterkennung: Google ML Kit, offline auf dem Gerät. Icons: Material Design Icons (Apache-2.0).",
+            "Encircle ist freie Software unter der Apache-Lizenz 2.0, Quellcode: github.com/Maxi2555/encircle. " +
+                "Barcodes: zxing-cpp (Apache-2.0). Texterkennung: Google ML Kit (proprietär, offline auf dem Gerät). " +
+                "Icons: Material Design Icons (Apache-2.0).",
             style = MaterialTheme.typography.bodySmall,
             color = scheme.onSurfaceVariant,
         )

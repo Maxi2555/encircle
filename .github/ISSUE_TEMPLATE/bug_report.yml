@@ -1,0 +1,65 @@
+name: Bug report
+description: Something does not work as it should.
+labels: ["bug", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. English or German, both are fine.
+        Text, a link or a code was not recognized? Please use the **Recognition problem** form instead.
+        Security problems go through the [Security tab](https://github.com/Maxi2555/encircle/security), not here.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Describe the problem. What did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Invoke Encircle with …
+        3. Tap …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Encircle version
+      description: Shown in Settings › Apps › Encircle, or the release you installed.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and system
+      placeholder: Pixel 8, GrapheneOS (Android 17) / Galaxy S24, One UI 8
+    validations:
+      required: true
+  - type: dropdown
+    id: invoke
+    attributes:
+      label: How do you invoke Encircle?
+      options:
+        - Home long-press (three-button navigation)
+        - Long-press on the gesture handle
+        - Corner swipe (assistant gesture)
+        - The "Ausprobieren" button in the app
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Open Encircle and copy the "Letzter Aufruf" (last invocation) card, if it is shown.
+      render: text
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots or recording
+      description: Drag files here. Please remove anything personal first.

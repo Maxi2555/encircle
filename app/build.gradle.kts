@@ -16,7 +16,21 @@ android {
         minSdk = 29
         targetSdk = 37
         versionCode = 1
-        versionName = "1.0.0"
+        versionName = "0.1.0"
+    }
+
+    // Release signing comes from the environment (see docs/RELEASING.md). Without it, release
+    // builds fall back to the local debug key so they can still be installed for testing.
+    val keystorePath = System.getenv("ENCIRCLE_KEYSTORE_FILE")
+    val releaseSigning = if (!keystorePath.isNullOrBlank() && file(keystorePath).exists()) {
+        signingConfigs.create("release") {
+            storeFile = file(keystorePath)
+            storePassword = System.getenv("ENCIRCLE_KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("ENCIRCLE_KEY_ALIAS")
+            keyPassword = System.getenv("ENCIRCLE_KEY_PASSWORD")
+        }
+    } else {
+        null
     }
 
     buildTypes {
@@ -27,9 +41,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            // Signed with the local debug key so the APK can be installed directly.
-            // Replace with a real signing config before distributing.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = releaseSigning ?: signingConfigs.getByName("debug")
         }
     }
 

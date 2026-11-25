@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to (re)build, e.g. v0.1.0
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, sign and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Check tag against versionName
+        run: |
+          version=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts)
+          if [ "v$version" != "$TAG" ]; then
+            echo "::error::Tag $TAG does not match versionName $version in app/build.gradle.kts"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Check signing secrets
+        env:
+          KEYSTORE: ${{ secrets.ENCIRCLE_KEYSTORE_BASE64 }}
+          STORE_PW: ${{ secrets.ENCIRCLE_KEYSTORE_PASSWORD }}
+          ALIAS: ${{ secrets.ENCIRCLE_KEY_ALIAS }}
+          KEY_PW: ${{ secrets.ENCIRCLE_KEY_PASSWORD }}
+        run: |
+          for name in KEYSTORE STORE_PW ALIAS KEY_PW; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Signing secrets are missing. See docs/RELEASING.md."
+              exit 1
+            fi
+          done
+          echo "$KEYSTORE" | base64 --decode > "$RUNNER_TEMP/release.jks"
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: true
+
+      - name: Test and build signed APKs
+        env:
+          ENCIRCLE_KEYSTORE_FILE: ${{ runner.temp }}/release.jks
+          ENCIRCLE_KEYSTORE_PASSWORD: ${{ secrets.ENCIRCLE_KEYSTORE_PASSWORD }}
+          ENCIRCLE_KEY_ALIAS: ${{ secrets.ENCIRCLE_KEY_ALIAS }}
+          ENCIRCLE_KEY_PASSWORD: ${{ secrets.ENCIRCLE_KEY_PASSWORD }}
+        run: ./gradlew testDebugUnitTest assembleRelease --stacktrace
+
+      - name: Collect APKs, checksums and notes
+        run: |
+          mkdir dist
+          for abi in arm64-v8a armeabi-v7a x86_64 universal; do
+            cp "app/build/outputs/apk/release/app-$abi-release.apk" "dist/encircle-$VERSION-$abi.apk"
+          done
+          (cd dist && sha256sum *.apk > SHA256SUMS.txt)
+
+          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          cert=$("$apksigner" verify --print-certs "dist/encircle-$VERSION-universal.apk" \
+            | sed -n 's/.*certificate SHA-256 digest: //p' | head -1)
+
+          awk -v v="$VERSION" '
+            $0 ~ "^## \\[" v "\\]" { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          {
+            echo
+            echo "### Downloads"
+            echo
+            echo "Most phones need \`encircle-$VERSION-arm64-v8a.apk\`. Checksums are in \`SHA256SUMS.txt\`."
+            echo
+            echo "Signing certificate SHA-256: \`$cert\`"
+          } >> notes.md
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=""
+          case "$VERSION" in 0.*) prerelease="--prerelease" ;; esac
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --title "Encircle $VERSION" --notes-file notes.md $prerelease --verify-tag
+          fi
+
+      - name: Remove keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"

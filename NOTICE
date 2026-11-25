@@ -1,0 +1,32 @@
+Encircle
+Copyright 2026 The Encircle contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes software developed by third parties:
+
+  zxing-cpp
+  Copyright the zxing-cpp authors
+  Licensed under the Apache License, Version 2.0
+  https://github.com/zxing-cpp/zxing-cpp
+
+  Android Jetpack (AndroidX, Jetpack Compose, Material 3)
+  Copyright The Android Open Source Project
+  Licensed under the Apache License, Version 2.0
+  https://developer.android.com/jetpack
+
+  Kotlin standard library and kotlinx.coroutines
+  Copyright JetBrains s.r.o. and Kotlin Programming Language contributors
+  Licensed under the Apache License, Version 2.0
+  https://github.com/JetBrains/kotlin
+
+  Material Design icons
+  Copyright Google LLC
+  Licensed under the Apache License, Version 2.0
+  https://github.com/google/material-design-icons
+
+This product also includes Google ML Kit Text Recognition and its Google Play
+services and Firebase support libraries. These are proprietary and are used
+under the ML Kit Terms of Service: https://developers.google.com/ml-kit/terms
+
+See THIRD-PARTY-NOTICES.md for details.
