@@ -964,7 +964,13 @@ private fun describe(code: DetectedCode): String = when (val k = code.content) {
     is CodeContent.Geo -> k.uri
     is CodeContent.Event -> listOfNotNull(
         k.title,
-        k.start?.let { DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(it)) },
+        k.start?.let {
+            if (k.allDay) {
+                DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(it))
+            } else {
+                DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(it))
+            }
+        },
         k.location,
     ).joinToString(" · ")
     is CodeContent.OtherUri -> k.uri
