@@ -4,6 +4,7 @@
 package de.volcanoproject.encircle
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -60,7 +61,11 @@ class MainActivity : ComponentActivity() {
                         isDisconnected = isDisconnected,
                         diagnostics = diagnostics,
                         onOpenSettings = { SystemActions.openAssistSettings(this) },
-                        onTry = { AssistService.launchOverlay() },
+                        onTry = {
+                            if (!AssistService.launchOverlay()) {
+                                Toast.makeText(this, "Assistent ist nicht verbunden", Toast.LENGTH_SHORT).show()
+                            }
+                        },
                     )
                 }
             }
