@@ -135,6 +135,20 @@ class SelectionLogicTest {
     }
 
     @Test
+    fun codeParser_mecardValuesAreEscaped() {
+        val c = CodeParser.parse("MECARD:N:Muster,Erika;NOTE:a\nTEL:999\\;b,c;TEL:+4930123;;", false) as CodeContent.Contact
+        assertTrue(c.vcard.contains("\r\nNOTE:a\\nTEL:999\\;b\\,c\r\n"))
+        assertFalse(c.vcard.contains("\nTEL:999"))
+        assertTrue(c.vcard.contains("\r\nTEL:+4930123\r\n"))
+    }
+
+    @Test
+    fun codeParser_smstoKeepsColonsAndQuestionMarks() {
+        assertEquals(CodeContent.Sms("+49123", "Wann? Um 8:30"), CodeParser.parse("SMSTO:+49123:Wann? Um 8:30", false))
+        assertEquals(CodeContent.Sms("+49123", null), CodeParser.parse("SMSTO:+49123", false))
+    }
+
+    @Test
     fun codeParser_event() {
         val c = CodeParser.parse("BEGIN:VEVENT\nSUMMARY:Treffen\nDTSTART:20261201T100000Z\nLOCATION:Berlin\nEND:VEVENT", false)
         c as CodeContent.Event
