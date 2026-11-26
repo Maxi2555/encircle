@@ -86,10 +86,11 @@ object SystemActions {
         val builder = WifiNetworkSuggestion.Builder().setSsid(w.ssid)
         val pw = w.password
         when {
-            pw == null || w.security == "NOPASS" -> Unit
+            w.security == "NOPASS" -> Unit
+            pw == null || w.security.contains("EAP") -> return false
             w.security.contains("SAE") || w.security.contains("WPA3") -> builder.setWpa3Passphrase(pw)
             w.security.startsWith("WPA") || w.security.isEmpty() -> builder.setWpa2Passphrase(pw)
-            else -> return false // WEP and enterprise networks cannot be suggested.
+            else -> return false // WEP networks cannot be suggested.
         }
         if (w.hidden) builder.setIsHiddenSsid(true)
         val suggestion = try { builder.build() } catch (e: IllegalArgumentException) { return false }
