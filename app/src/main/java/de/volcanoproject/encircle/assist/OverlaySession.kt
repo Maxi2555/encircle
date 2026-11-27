@@ -33,6 +33,8 @@ class OverlaySession(context: Context) : VoiceInteractionSession(context) {
 
     private val owner = SessionLifecycleOwner()
     private lateinit var controller: OverlayController
+    private var open = false
+    private var awaitingScreenshot = false
 
     override fun onCreate() {
         super.onCreate()
@@ -97,13 +99,18 @@ class OverlaySession(context: Context) : VoiceInteractionSession(context) {
 
     override fun onShow(args: Bundle?, showFlags: Int) {
         super.onShow(args, showFlags)
-        controller.begin(showFlags, screenshotExpected = showFlags and SHOW_WITH_SCREENSHOT != 0)
+        if (open) return
+        open = true
+        awaitingScreenshot = showFlags and SHOW_WITH_SCREENSHOT != 0
+        controller.begin(showFlags, screenshotExpected = awaitingScreenshot)
         // Started by the system shortcut (home long-press, handle, corner swipe), not by the app's own
         // "try it" button: the setup screen can tick off the shortcut step.
         if (showFlags and SHOW_SOURCE_ASSIST_GESTURE != 0) AssistantSetup.markShortcutUsed(context)
     }
 
     override fun onHandleScreenshot(screenshot: Bitmap?) {
+        if (!awaitingScreenshot) return
+        awaitingScreenshot = false
         controller.onScreenshot(screenshot)
     }
 
@@ -112,6 +119,8 @@ class OverlaySession(context: Context) : VoiceInteractionSession(context) {
     }
 
     override fun onHide() {
+        open = false
+        awaitingScreenshot = false
         controller.reset()
         super.onHide()
     }
