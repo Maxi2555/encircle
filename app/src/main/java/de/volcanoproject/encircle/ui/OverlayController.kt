@@ -20,6 +20,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.get
 import de.volcanoproject.encircle.R
 import de.volcanoproject.encircle.actions.SystemActions
 import de.volcanoproject.encircle.analysis.CodeContent
@@ -430,7 +431,7 @@ class OverlayController(private val context: Context, private val finish: () -> 
             val a = ring[f.toInt() % ring.size]
             val b = ring[(f.toInt() + 1) % ring.size]
             val p = a + (b - a) * (f - f.toInt())
-            val argb = bmp.getPixel(p.x.roundToInt().coerceIn(0, bmp.width - 1), p.y.roundToInt().coerceIn(0, bmp.height - 1))
+            val argb = bmp[p.x.roundToInt().coerceIn(0, bmp.width - 1), p.y.roundToInt().coerceIn(0, bmp.height - 1)]
             light += (0.2126f * ((argb shr 16) and 255) + 0.7152f * ((argb shr 8) and 255) + 0.0722f * (argb and 255)) / 255f
         }
         return light / samples > 0.5f
