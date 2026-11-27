@@ -23,22 +23,26 @@ class AssistantSetupTest {
 
     @Test
     fun launcherFamilies() {
-        assertEquals(LauncherFamily.Pixel, AssistantSetup.launcherFamilyFor("com.google.android.apps.nexuslauncher", "Google"))
-        assertEquals(LauncherFamily.Samsung, AssistantSetup.launcherFamilyFor("com.sec.android.app.launcher", "samsung"))
-        assertEquals(LauncherFamily.Samsung, AssistantSetup.launcherFamilyFor("com.teslacoilsw.launcher", "samsung"))
+        assertEquals(LauncherFamily.Pixel, AssistantSetup.launcherFamilyFor(setOf(AssistantSetup.PIXEL_LAUNCHER)::contains))
+        assertEquals(LauncherFamily.Samsung, AssistantSetup.launcherFamilyFor(setOf(AssistantSetup.SAMSUNG_LAUNCHER)::contains))
         // GrapheneOS and other AOSP-based systems ship Launcher3.
-        assertEquals(LauncherFamily.Aosp, AssistantSetup.launcherFamilyFor("com.android.launcher3", "Google"))
-        assertEquals(LauncherFamily.Aosp, AssistantSetup.launcherFamilyFor(null, "Fairphone"))
+        assertEquals(LauncherFamily.Aosp, AssistantSetup.launcherFamilyFor(setOf("com.android.launcher3")::contains))
     }
 
     @Test
-    fun buttonsAlwaysMeanHomeLongPress() {
+    fun buttonsMeanHomeLongPress() {
         for (launcher in LauncherFamily.entries) {
             val plan = AssistantSetup.plan(Navigation.Buttons, launcher)
             assertEquals("Home gedrückt halten", plan.title)
-            assertEquals(AssistantSetup.ACTION_BUTTON_NAVIGATION, plan.settingsActions.first())
             assertFalse(plan.offerButtonNavigation)
         }
+        assertEquals(
+            AssistantSetup.ACTION_BUTTON_NAVIGATION,
+            AssistantSetup.plan(Navigation.Buttons, LauncherFamily.Aosp).settingsActions.first(),
+        )
+        // Circle to Search takes the home long-press on Pixel and Samsung until it is switched off.
+        assertTrue(AssistantSetup.plan(Navigation.Buttons, LauncherFamily.Pixel).howTo.contains("Circle to Search"))
+        assertTrue(AssistantSetup.plan(Navigation.Buttons, LauncherFamily.Samsung).howTo.contains("Circle to Search"))
     }
 
     @Test
@@ -58,6 +62,7 @@ class AssistantSetupTest {
         val plan = AssistantSetup.plan(Navigation.Buttons, LauncherFamily.Aosp)
         assertEquals(3, SetupStatus(false, false, false, false, plan).stepsLeft)
         assertEquals(1, SetupStatus(true, false, true, false, plan).stepsLeft)
+        assertEquals(listOf(true, true, false), SetupStatus(true, false, true, false, plan).steps)
         assertTrue(SetupStatus(true, false, true, true, plan).ready)
     }
 }
