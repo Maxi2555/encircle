@@ -49,6 +49,7 @@ data class SetupStatus(
 object AssistantSetup {
     private const val PREFS = "setup"
     private const val KEY_SHORTCUT_USED = "shortcut_used"
+    private const val KEY_ONBOARDING_DONE = "onboarding_done"
 
     const val ACTION_NAVIGATION_MODE = "com.android.settings.NAVIGATION_MODE_SETTINGS"
     const val ACTION_GESTURE_NAVIGATION = "com.android.settings.GESTURE_NAVIGATION_SETTINGS"
@@ -67,6 +68,14 @@ object AssistantSetup {
 
     fun markShortcutUsed(context: Context) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean(KEY_SHORTCUT_USED, true) }
+    }
+
+    /** The first-run tutorial shows until it has been finished or postponed once. */
+    fun onboardingDone(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_ONBOARDING_DONE, false)
+
+    fun markOnboardingDone(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean(KEY_ONBOARDING_DONE, true) }
     }
 
     private fun shortcutUsed(context: Context) =
