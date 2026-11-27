@@ -8,6 +8,7 @@ import android.view.HapticFeedbackConstants
 import android.view.View
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -25,9 +26,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -54,10 +55,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -66,6 +68,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.MutableFloatState
@@ -73,9 +76,12 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -83,22 +89,20 @@ import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.Shader
-import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.AwaitPointerEventScope
 import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.pointerInput
@@ -121,6 +125,7 @@ import de.volcanoproject.encircle.analysis.EntityKind
 import de.volcanoproject.encircle.analysis.TextEntity
 import de.volcanoproject.encircle.analysis.TextLayout
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
@@ -150,14 +155,14 @@ fun OverlayScreen(c: OverlayController) {
     }
 
     val appear = remember { Animatable(0f) }
-    val shimmer = remember { Animatable(0f) }
     // How far the bar has been pushed up from its resting place (0 or negative, in px), and
     // whether the overlay is leaving through the top because the bar was pushed out.
     val barOffset = remember { mutableFloatStateOf(0f) }
     val exitUp = remember { mutableStateOf(false) }
     val exit = remember { Animatable(0f) }
     val barIn = remember { Animatable(0f) }
-    val edge = remember { Animatable(0f) }
+    val shimmer = remember { Animatable(0f) }
+    val finish = remember { Animatable(0f) }
     LaunchedEffect(c.sessionId, active) {
         barOffset.floatValue = 0f
         exitUp.value = false
@@ -167,22 +172,20 @@ fun OverlayScreen(c: OverlayController) {
         // The bar springs up with a little overshoot, as if thrown in from below.
         if (active) barIn.animateTo(1f, spring(dampingRatio = 0.62f, stiffness = 340f)) else barIn.snapTo(0f)
     }
-    LaunchedEffect(c.sessionId, img, c.analyzing) {
-        // The glowing frame stays while the screen is being read, then fades out.
-        if (img == null) {
-            edge.snapTo(0f)
-        } else if (c.analyzing) {
-            edge.animateTo(1f, tween(280))
-        } else {
-            delay(200)
-            edge.animateTo(0f, tween(1100, easing = FastOutSlowInEasing))
+    LaunchedEffect(c.sessionId, img) {
+        // Reset as soon as the screenshot is gone, so the next one never shows a frame of the last sweep.
+        shimmer.snapTo(0f)
+        if (img == null) return@LaunchedEffect
+        // The sweep runs at its own pace while the screen is being read; once it has been read, whatever
+        // is left of it hurries out of the way.
+        snapshotFlow { c.analyzing }.collectLatest { reading ->
+            val ms = (if (reading) SWEEP_MS else SWEEP_FINISH_MS) * (1f - shimmer.value)
+            shimmer.animateTo(1f, tween(ms.toInt(), easing = LinearEasing))
         }
     }
-    LaunchedEffect(c.sessionId, img) {
-        if (img != null) {
-            shimmer.snapTo(0f)
-            shimmer.animateTo(1f, tween(1100, easing = LinearOutSlowInEasing))
-        }
+    LaunchedEffect(c.sessionId, img, c.analyzing) {
+        // The frame stays while the screen is being read; once it has been read, it flashes and winds back.
+        if (img == null || c.analyzing) finish.snapTo(0f) else finish.animateTo(1f, tween(FINISH_MS, easing = LinearEasing))
     }
     LaunchedEffect(c.exiting) {
         if (c.exiting) {
@@ -192,8 +195,8 @@ fun OverlayScreen(c: OverlayController) {
             exit.snapTo(0f)
         }
     }
-    // Fades the overlay while the bar is pushed past the top edge, previewing that letting go closes it.
-    val beyondTop = remember { mutableFloatStateOf(0f) }
+    // Fades the overlay while the bar is pushed past the top or bottom edge, previewing that letting go closes it.
+    val beyondEdge = remember { mutableFloatStateOf(0f) }
 
     Box(
         Modifier
@@ -205,13 +208,20 @@ fun OverlayScreen(c: OverlayController) {
             }
             .graphicsLayer {
                 // Fading reveals the live app underneath, which looks identical to the screenshot.
-                alpha = (1f - exit.value) * (1f - 0.6f * beyondTop.floatValue)
+                alpha = (1f - exit.value) * (1f - 0.6f * beyondEdge.floatValue)
             },
     ) {
         if (img != null) {
-            ScreenLayer(c, img, appear::value, shimmer::value, edge::value)
+            // The frozen screen and its badges swell a little and settle as the frame goes; the frame and
+            // touch input stay put.
+            val swell = Modifier.graphicsLayer {
+                val k = 1f + SCREEN_POP * sin(PI.toFloat() * (finish.value / POP_SHARE).coerceIn(0f, 1f))
+                scaleX = k
+                scaleY = k
+            }
+            ScreenLayer(c, img, appear::value, shimmer::value, finish::value, swell)
             Box(Modifier.fillMaxSize().overlayGestures(c))
-            CodeBadges(c)
+            CodeBadges(c, swell)
         } else if (c.screenshotMissing) {
             MissingScreenshot(c, appear::value)
         }
@@ -222,7 +232,7 @@ fun OverlayScreen(c: OverlayController) {
                 exit = exit::value,
                 barOffset = barOffset,
                 exitUp = exitUp,
-                beyondTop = beyondTop,
+                beyondEdge = beyondEdge,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
@@ -232,41 +242,32 @@ fun OverlayScreen(c: OverlayController) {
 // -------------------------------------------------------------------- drawing
 
 @Composable
-private fun ScreenLayer(c: OverlayController, img: ImageBitmap, appear: () -> Float, shimmer: () -> Float, edge: () -> Float) {
+private fun ScreenLayer(
+    c: OverlayController,
+    img: ImageBitmap,
+    appear: () -> Float,
+    shimmer: () -> Float,
+    finish: () -> Float,
+    modifier: Modifier = Modifier,
+) {
     val glow = rememberGlowPalette()
     val selection = c.selection
     val layout = c.layout
     val scrim by animateFloatAsState(if (selection == Selection.None) 0.18f else 0.45f, tween(260), label = "scrim")
 
-    // One slow rotation drives every flowing gradient: the frame and the code outlines.
-    val spin = rememberInfiniteTransition(label = "spin").animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(2800, easing = LinearEasing), RepeatMode.Restart),
-        label = "spin",
-    )
-    // The main wave: once text and codes are both known, one wave of colour runs up from the bottom
-    // edge across every word and through every code, so results appear together however fast each was.
+    // Once text and codes are both known, a wave runs up from the bottom edge across every word, so
+    // results appear together however fast each was.
     val wave = remember { Animatable(0f) }
     val done = !c.analyzing
     LaunchedEffect(c.sessionId, done) {
-        if (done && (!layout.isEmpty || c.codes.isNotEmpty())) {
-            wave.snapTo(0f)
-            wave.animateTo(1f, tween(1050, easing = FastOutSlowInEasing))
-        } else {
-            wave.snapTo(0f)
-        }
+        wave.snapTo(0f)
+        if (done && (!layout.isEmpty || c.codes.isNotEmpty())) wave.animateTo(1f, tween(1050, easing = FastOutSlowInEasing))
     }
-    // After the activation light show, a quiet aurora stays for as long as Encircle is open,
-    // so it is always clear that the screen is frozen and being looked at.
+    // As the frame dissolves, a quiet aurora takes its place for as long as Encircle is open, so it is
+    // always clear that the screen is frozen and being looked at.
     val ambientIn = remember { Animatable(0f) }
     LaunchedEffect(c.sessionId, done) {
-        if (done) {
-            delay(450)
-            ambientIn.animateTo(1f, tween(1500, easing = FastOutSlowInEasing))
-        } else {
-            ambientIn.snapTo(0f)
-        }
+        if (done) ambientIn.animateTo(1f, tween(1200, easing = FastOutSlowInEasing)) else ambientIn.snapTo(0f)
     }
     val drift = rememberInfiniteTransition(label = "aurora").animateFloat(
         initialValue = 0f,
@@ -283,20 +284,29 @@ private fun ScreenLayer(c: OverlayController, img: ImageBitmap, appear: () -> Fl
         }
     }
     val codesIn = remember { Animatable(0f) }
-    LaunchedEffect(c.codes) {
-        if (c.codes.isNotEmpty()) {
-            codesIn.snapTo(0f)
-            codesIn.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 260f))
-        }
+    // Codes are often found long before the text; their layer waits for the rest, like the badges.
+    LaunchedEffect(c.codes, done) {
+        codesIn.snapTo(0f)
+        if (c.codes.isNotEmpty() && done) codesIn.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 260f))
     }
     val selectIn = remember { Animatable(1f) }
-    val sheen = remember { Animatable(1f) }
+    // Selecting a code: a ripple spreads from the touch while the focus ring springs in and the corners round out.
+    val focus = remember { Animatable(0f) }
+    val ripple = remember { Animatable(1f) }
     LaunchedEffect(selection) {
+        if (selection is Selection.Code) {
+            launch {
+                ripple.snapTo(0f)
+                ripple.animateTo(1f, tween(600, easing = LinearOutSlowInEasing))
+            }
+            launch {
+                focus.snapTo(0f)
+                focus.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = 400f))
+            }
+        }
         if (selection != Selection.None) {
             selectIn.snapTo(0f)
-            sheen.snapTo(0f)
-            launch { sheen.animateTo(1f, tween(750, easing = FastOutSlowInEasing)) }
-            selectIn.animateTo(1f, spring(dampingRatio = 0.55f, stiffness = 520f))
+            selectIn.animateTo(1f, tween(150))
         }
     }
     val trailAlpha = remember { Animatable(0f) }
@@ -304,24 +314,37 @@ private fun ScreenLayer(c: OverlayController, img: ImageBitmap, appear: () -> Fl
         if (c.strokeActive) {
             trailAlpha.snapTo(1f)
         } else {
-            trailAlpha.animateTo(0f, tween(380))
+            trailAlpha.animateTo(0f, tween(150))
             if (!c.strokeActive) c.trail.clear()
         }
     }
 
     val selectionPath = remember(selection, layout) { selectionPath(c) }
-    val codePaths = remember(c.codes, c.scale, c.density) {
-        val k = c.density / c.scale
-        c.codes.associate { it.id to roundedPolygon(expandPolygon(it.corners, 8f * k), 14f * k) }
+    // Marks take the darker of the two primary tones on light surroundings, the lighter on dark ones.
+    val scheme = MaterialTheme.colorScheme
+    val (darkTone, lightTone) = remember(scheme) { listOf(scheme.primary, scheme.inversePrimary).sortedBy { it.luminance() } }
+    // Between the two tones, so it shows on light and dark screens alike; marks take it too until the
+    // screenshot's pixels are ready to tell which tone they need.
+    val sweepTone = remember(scheme) { lerp(darkTone, lightTone, 0.5f) }
+    fun toneAround(outline: List<Offset>, margin: Float) = when (c.isOnLight(outline, margin)) {
+        true -> darkTone
+        false -> lightTone
+        null -> sweepTone
     }
+    val codeTone = remember(c.codes, scheme) { c.codes.associate { it.id to toneAround(it.corners, CODE_PAD) } }
+    val entityTone = remember(c.entities, scheme) { c.entities.map { toneAround(it.bounds.outline(), MARK_MARGIN) } }
+    val selectionTone = remember(selectionPath, scheme) { selectionPath?.let { toneAround(it.getBounds().outline(), MARK_MARGIN) } ?: darkTone }
+    val regionTone = remember(selection, scheme) { (selection as? Selection.Region)?.let { toneAround(it.rect.outline(), MARK_MARGIN) } ?: darkTone }
+    // Derived, so the layer recomposes when a stroke starts, not on every point of it.
+    val trailStart by remember { derivedStateOf { c.trail.firstOrNull() } }
+    val trailTone = remember(trailStart, scheme) { trailStart?.let { toneAround(Rect(it, 1f).outline(), TRAIL_MARGIN) } ?: darkTone }
     val entitySegments = remember(c.entities, layout) { entitySegments(c.entities, layout) }
 
-    Canvas(Modifier.fillMaxSize()) {
+    Canvas(modifier.fillMaxSize()) {
         val s = c.scale
         val o = c.origin
         val u = density / s // one dp in screenshot pixels
         val full = Size(img.width.toFloat(), img.height.toFloat())
-        val deg = spin.value
         withTransform({
             translate(o.x, o.y)
             scale(s, s, Offset.Zero)
@@ -330,89 +353,74 @@ private fun ScreenLayer(c: OverlayController, img: ImageBitmap, appear: () -> Fl
             drawRect(Color.Black, size = full, alpha = scrim * appear())
             drawAurora(drift.value, ambientIn.value * appear(), glow, full)
 
-            val si = selectIn.value
-            val sa = si.coerceIn(0f, 1f)
+            val sa = selectIn.value
             when (selection) {
                 is Selection.Words -> selectionPath?.let { p ->
-                    val b = p.getBounds()
-                    val brush = Brush.linearGradient(glow.colors, b.topLeft, b.bottomRight)
                     clipPath(p) { drawImage(img) }
-                    withTransform({ scale(0.92f + 0.08f * si, 0.92f + 0.08f * si, b.center) }) {
-                        drawPath(p, brush, alpha = 0.30f * sa)
-                        drawPath(p, brush, alpha = 0.9f * sa, style = Stroke(width = 1.6f * u))
-                    }
-                    drawSheen(p, b, sheen.value)
+                    drawPath(p, selectionTone, alpha = 0.3f * sa)
                 }
-                is Selection.Code -> codePaths[selection.code.id]?.let { p ->
-                    clipPath(p) { drawImage(img) }
-                    drawSheen(p, p.getBounds(), sheen.value)
-                }
+                is Selection.Code -> clipPath(codeLayer(selection.code, u, CODE_PAD, CODE_RADIUS + CODE_RADIUS_GROW * focus.value)) { drawImage(img) }
                 is Selection.Region -> {
                     val r = selection.rect
                     clipRect(r.left, r.top, r.right, r.bottom) { drawImage(img) }
-                    drawBrackets(r, u, glow, si)
+                    drawRect(regionTone, r.topLeft, r.size, alpha = 0.08f * sa)
+                    drawRect(regionTone, r.topLeft, r.size, alpha = sa, style = Stroke(width = 2f * u))
                 }
                 Selection.None -> Unit
             }
 
-            // Links, addresses and numbers: a gradient underline that draws itself in.
+            // Links, addresses and numbers: an underline that draws itself in.
             val ei = entitiesIn.value
             if (ei > 0f) {
-                entitySegments.forEachIndexed { n, (entity, rects) ->
+                entitySegments.forEachIndexed { n, (_, rects) ->
                     val t = (ei * 1.6f - (n % 10) * 0.06f).coerceIn(0f, 1f)
                     if (t <= 0f) return@forEachIndexed
                     for (r in rects) {
                         val y = r.bottom + 2f * u
-                        val brush = Brush.horizontalGradient(glow.colors, r.left, r.right)
                         if (selection == Selection.None) {
                             drawRoundRect(
-                                glow.at(entity.id * 0.29f),
+                                entityTone[n],
                                 Offset(r.left - 2f * u, r.top - 1.5f * u),
                                 Size(r.width + 4f * u, r.height + 3f * u),
                                 CornerRadius(4f * u),
                                 alpha = 0.16f * t,
                             )
                         }
-                        drawLine(brush, Offset(r.left, y), Offset(r.left + r.width * t, y), strokeWidth = 2.6f * u, cap = StrokeCap.Round)
+                        drawLine(entityTone[n], Offset(r.left, y), Offset(r.left + r.width * t, y), strokeWidth = 2f * u, cap = StrokeCap.Round)
                     }
                 }
             }
 
-            // Barcodes: rounded corner marks that snap into place and a glow that stays outside the code.
-            // The code itself keeps the colours of the main wave: once the wave has passed, its dark modules
-            // stay lit in the palette (screen blending tints dark pixels, white stays white).
+            // Barcodes: a Material state layer. Selecting one spreads a ripple from the touch, springs the
+            // corners rounder and adds a focus ring.
             val ca = codesIn.value
-            val cv = ca.coerceIn(0f, 1f)
-            val waveFrom = Offset(full.width / 2f, full.height)
-            val waveReach = hypot(full.width / 2f, full.height)
-            for (code in c.codes) {
-                val p = codePaths[code.id] ?: continue
-                val selected = (selection as? Selection.Code)?.code?.id == code.id
-                val brush = spinBrush(glow.loop, code.center, deg + code.id * 47f)
-                val ww = wave.value
-                val d = (code.center - waveFrom).getDistance() / waveReach
-                val front = ww * 1.2f - 0.1f
-                // Ahead of the wave: a glow builds up. Behind it: the colour stays.
-                val lit = when {
-                    ww <= 0f -> 0f
-                    ww >= 1f || d <= front -> 1f
-                    else -> (1f - (d - front) * 3.5f).coerceIn(0f, 1f)
-                }
-                if (lit > 0f) {
-                    val modules = Brush.linearGradient(glow.colors, code.bounds.topLeft, code.bounds.bottomRight)
-                    clipPath(p) {
-                        drawRect(modules, code.bounds.topLeft, code.bounds.size, alpha = lit, blendMode = BlendMode.Screen)
+            val a = ca.coerceIn(0f, 1f)
+            if (a > 0f) for (code in c.codes) {
+                val selected = (selection as? Selection.Code)?.takeIf { it.code.id == code.id }
+                val f = if (selected != null) focus.value else 0f
+                val tone = codeTone.getValue(code.id)
+                val radius = CODE_RADIUS + CODE_RADIUS_GROW * f
+                val layer = codeLayer(code, u, CODE_PAD, radius)
+                withTransform({ scale(0.96f + 0.04f * ca, 0.96f + 0.04f * ca, code.center) }) {
+                    drawPath(layer, tone, alpha = (0.10f + 0.05f * f.coerceIn(0f, 1f)) * a)
+                    if (selected != null) {
+                        val r = ripple.value
+                        if (r < 1f) {
+                            val from = selected.touch ?: code.center
+                            val reach = code.corners.maxOf { (it - from).getDistance() } + CODE_PAD * u
+                            clipPath(layer) { drawCircle(tone, reach * r, from, alpha = 0.14f * (1f - r)) }
+                        }
+                        drawPath(
+                            codeLayer(code, u, CODE_PAD + FOCUS_OFFSET, radius + FOCUS_GAP),
+                            tone,
+                            alpha = f.coerceIn(0f, 1f),
+                            style = Stroke(width = FOCUS_WIDTH * u),
+                        )
                     }
                 }
-                // The corner marks outline an implicit border; the glow is cut out inside it.
-                clipPath(p, clipOp = ClipOp.Difference) {
-                    drawPath(p, brush, alpha = (if (selected) 0.32f else 0.2f) * cv, style = Stroke(width = 22f * u, join = StrokeJoin.Round))
-                    drawPath(p, brush, alpha = (if (selected) 0.5f else 0.32f) * cv, style = Stroke(width = 9f * u, join = StrokeJoin.Round))
-                }
-                drawCodeBrackets(code, (1f - ca) * 22f * u + 12f * u, u, brush, cv, if (selected) 4.5f else 3.5f)
             }
 
-            // The main wave over the words.
+            // The wave over the words.
             val w = wave.value
             if (w > 0f && w < 1f) {
                 val from = Offset(full.width / 2f, full.height)
@@ -420,47 +428,49 @@ private fun ScreenLayer(c: OverlayController, img: ImageBitmap, appear: () -> Fl
                 val radius = CornerRadius(4f * u)
                 for (word in layout.words) {
                     val d = (word.box.center - from).getDistance() / reach
-                    val a = (1f - abs(d - (w * 1.2f - 0.1f)) * 6f).coerceIn(0f, 1f)
-                    if (a <= 0f) continue
-                    val color = glow.at(word.box.center.x / full.width * 0.8f + w * 0.4f)
-                    val grow = a * 2f * u
+                    val lit = (1f - abs(d - (w * 1.2f - 0.1f)) * 6f).coerceIn(0f, 1f)
+                    if (lit <= 0f) continue
+                    val color = glow.flow(0.04f + 0.14f * word.box.center.x / full.width + 0.1f * w)
+                    val grow = lit * 2f * u
                     drawRoundRect(
                         color,
                         Offset(word.box.left - grow, word.box.top - grow),
                         Size(word.box.width + 2 * grow, word.box.height + 2 * grow),
                         radius,
-                        alpha = a * 0.55f,
+                        alpha = lit * 0.45f,
                     )
                 }
             }
 
-            // The finger trail: coloured glow with a bright core.
             val ta = trailAlpha.value
             if (ta > 0f && c.trail.size > 1) {
-                val path = smoothPath(c.trail)
-                val b = path.getBounds()
-                val brush = Brush.linearGradient(glow.colors, b.topLeft, b.bottomRight)
-                drawPath(path, brush, alpha = 0.30f * ta, style = Stroke(width = 26f * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
-                drawPath(path, brush, alpha = 0.75f * ta, style = Stroke(width = 12f * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
-                drawPath(path, Color.White, alpha = 0.95f * ta, style = Stroke(width = 4.5f * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                drawPath(smoothPath(c.trail), trailTone, alpha = 0.6f * ta, style = Stroke(width = 4f * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
             }
         }
 
         c.handleCenters()?.let { (start, end) ->
-            drawHandle(start, true, glow.colors[0])
-            drawHandle(end, false, glow.colors[2])
+            drawHandle(start, true, selectionTone)
+            drawHandle(end, false, selectionTone)
         }
-
-        drawActivation(shimmer(), edge(), deg, glow, ambientIn.value, drift.value)
     }
+    Spacer(
+        Modifier.fillMaxSize().drawWithCache {
+            val edge = screenEdge(size)
+            onDrawBehind {
+                drawSweep(sweepTone, shimmer())
+                drawScreenFrame(edge, glow, shimmer(), finish(), drift.value)
+            }
+        },
+    )
 }
 
 /** One full drift cycle of the aurora behind the frozen screen. */
 private const val AURORA_PERIOD_MS = 16_000
 
 /**
- * Three large, soft clouds of the glow palette drifting slowly over the frozen screen, plus a gentle
- * vignette. Kept at low alpha so text stays readable; drawn below selections, codes and underlines.
+ * Three large, soft clouds in neighbouring hues of the glow palette drifting slowly over the frozen
+ * screen, plus a gentle vignette. Kept at low alpha so text stays readable; drawn below selections,
+ * codes and underlines.
  */
 private fun DrawScope.drawAurora(t: Float, strength: Float, glow: GlowPalette, full: Size) {
     if (strength <= 0f) return
@@ -468,9 +478,9 @@ private fun DrawScope.drawAurora(t: Float, strength: Float, glow: GlowPalette, f
     val h = full.height
     val turn = 2f * PI.toFloat()
     val clouds = listOf(
-        Triple(Offset(w * (0.18f + 0.14f * sin(turn * t)), h * (0.84f + 0.07f * cos(turn * t))), 0.62f, glow.at(0.05f)),
-        Triple(Offset(w * (0.82f + 0.12f * cos(turn * (t + 0.33f))), h * (0.18f + 0.08f * sin(turn * (t + 0.33f)))), 0.58f, glow.at(0.45f)),
-        Triple(Offset(w * (0.5f + 0.32f * sin(turn * (t + 0.6f))), h * (0.5f + 0.22f * cos(turn * 2f * t))), 0.48f, glow.at(0.75f)),
+        Triple(Offset(w * (0.18f + 0.14f * sin(turn * t)), h * (0.84f + 0.07f * cos(turn * t))), 0.62f, glow.flow(0.02f)),
+        Triple(Offset(w * (0.82f + 0.12f * cos(turn * (t + 0.33f))), h * (0.18f + 0.08f * sin(turn * (t + 0.33f)))), 0.58f, glow.flow(0.12f)),
+        Triple(Offset(w * (0.5f + 0.32f * sin(turn * (t + 0.6f))), h * (0.5f + 0.22f * cos(turn * 2f * t))), 0.48f, glow.flow(0.22f)),
     )
     for ((centre, size, color) in clouds) {
         val radius = h * size
@@ -496,8 +506,18 @@ private fun DrawScope.drawAurora(t: Float, strength: Float, glow: GlowPalette, f
     )
 }
 
-/** Height of the activation colour band, as a share of the screen height. */
-private const val BAND_FRACTION = 0.42f
+/** How long the frame takes to flash and go once the screen has been read. */
+private const val FINISH_MS = 700
+
+/** How much the frozen screen swells as the frame goes, and the share of [FINISH_MS] the swell takes. */
+private const val SCREEN_POP = 0.012f
+private const val POP_SHARE = 0.5f
+
+/** How far around a mark the screen is sampled to pick its tone, in dp; around the start of a stroke, wider. */
+private const val MARK_MARGIN = 4f
+private const val TRAIL_MARGIN = 16f
+
+private fun Rect.outline() = listOf(topLeft, topRight, bottomRight, bottomLeft)
 
 /** Line pieces of each entity, merged per text line, for underlining. */
 private fun entitySegments(entities: List<TextEntity>, layout: TextLayout): List<Pair<TextEntity, List<Rect>>> =
@@ -507,60 +527,21 @@ private fun entitySegments(entities: List<TextEntity>, layout: TextLayout): List
         }
     }
 
-/** A sweep gradient turned by [degrees] around [center]; animating the angle makes colours flow along a shape. */
-private fun spinBrush(colors: List<Color>, center: Offset, degrees: Float): Brush = object : ShaderBrush() {
-    override fun createShader(size: Size): Shader {
-        val ints = IntArray(colors.size) { colors[it].toArgb() }
-        return android.graphics.SweepGradient(center.x, center.y, ints, null).apply {
-            setLocalMatrix(android.graphics.Matrix().apply { setRotate(degrees, center.x, center.y) })
-        }
-    }
-}
+/** How far a code's state layer reaches beyond the code's corners, along the diagonal, in dp. */
+private const val CODE_PAD = 14f
 
-/** A diagonal band of light that sweeps once across a fresh selection. */
-private fun DrawScope.drawSheen(p: Path, b: Rect, t: Float) {
-    if (t <= 0f || t >= 1f) return
-    val band = max(b.height, 24f) * 1.2f
-    val x = b.left - band + (b.width + 2 * band) * t
-    clipPath(p) {
-        drawRect(
-            Brush.linearGradient(
-                listOf(Color.Transparent, Color.White.copy(alpha = 0.55f * (1f - t * 0.6f)), Color.Transparent),
-                start = Offset(x - band / 2f, b.top),
-                end = Offset(x + band / 2f, b.bottom),
-            ),
-            topLeft = b.topLeft,
-            size = b.size,
-        )
-    }
-}
+/** Corner radius of a code's state layer, in dp, and how much rounder it gets while selected. */
+private const val CODE_RADIUS = 16f
+private const val CODE_RADIUS_GROW = 8f
 
-/** Rounded corner marks around a code, pushed out by [out] so they can spring inwards. */
-private fun DrawScope.drawCodeBrackets(code: DetectedCode, out: Float, u: Float, brush: Brush, alpha: Float, width: Float) {
-    if (alpha <= 0f) return
-    val pts = code.corners
-    val n = pts.size
-    val center = code.center
-    for (i in 0 until n) {
-        val c0 = pts[i]
-        val dir = (c0 - center).let { v -> v / max(v.getDistance(), 1f) }
-        val pos = c0 + dir * out
-        val prev = pts[(i + n - 1) % n]
-        val next = pts[(i + 1) % n]
-        val toPrev = (prev - c0).let { v -> v / max(v.getDistance(), 1f) }
-        val toNext = (next - c0).let { v -> v / max(v.getDistance(), 1f) }
-        val len = minOf(20f * u, (prev - c0).getDistance() * 0.3f, (next - c0).getDistance() * 0.3f)
-        val round = len * 0.55f
-        val path = Path().apply {
-            moveTo(pos.x + toPrev.x * len, pos.y + toPrev.y * len)
-            lineTo(pos.x + toPrev.x * round, pos.y + toPrev.y * round)
-            quadraticTo(pos.x, pos.y, pos.x + toNext.x * round, pos.y + toNext.y * round)
-            lineTo(pos.x + toNext.x * len, pos.y + toNext.y * len)
-        }
-        drawPath(path, brush, alpha = 0.45f * alpha, style = Stroke(width = (width + 6f) * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        drawPath(path, Color.White, alpha = alpha, style = Stroke(width = width * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
-    }
-}
+/** The focus ring: its width and the gap to the layer in dp, and how far its corners sit outside the layer's. */
+private const val FOCUS_WIDTH = 2f
+private const val FOCUS_GAP = 3f
+private const val FOCUS_OFFSET = 4.2f
+
+/** The area a code's state layer covers: its corners pushed out by [pad] dp and rounded by [radius] dp; [u] is pixels per dp. */
+private fun codeLayer(code: DetectedCode, u: Float, pad: Float, radius: Float): Path =
+    roundedPolygon(expandPolygon(code.corners, pad * u), radius * u)
 
 private fun selectionPath(c: OverlayController): Path? {
     val sel = c.selection as? Selection.Words ?: return null
@@ -587,89 +568,12 @@ private fun selectionPath(c: OverlayController): Path? {
     return path
 }
 
-private fun DrawScope.drawBrackets(r: Rect, u: Float, glow: GlowPalette, t: Float) {
-    val out = (1f - t) * 14f * u
-    val len = minOf(28f * u, r.width / 3f, r.height / 3f)
-    val brush = Brush.linearGradient(glow.colors, r.topLeft, r.bottomRight)
-    val corners = listOf(
-        Triple(r.topLeft, 1f, 1f), Triple(r.topRight, -1f, 1f),
-        Triple(r.bottomLeft, 1f, -1f), Triple(r.bottomRight, -1f, -1f),
-    )
-    for ((p0, dx, dy) in corners) {
-        val p = p0 + Offset(-dx * out, -dy * out)
-        val path = Path().apply {
-            moveTo(p.x + dx * len, p.y)
-            lineTo(p.x, p.y)
-            lineTo(p.x, p.y + dy * len)
-        }
-        drawPath(path, brush, alpha = 0.5f, style = Stroke(width = 10f * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        drawPath(path, Color.White, style = Stroke(width = 4f * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
-    }
-    drawRect(brush, r.topLeft, r.size, alpha = 0.8f, style = Stroke(width = 1.5f * u))
-}
-
 /** Teardrop selection handle; the pointed corner touches the text. */
 private fun DrawScope.drawHandle(center: Offset, start: Boolean, color: Color) {
     val r = 9.dp.toPx()
     val corner = if (start) Rect(center.x, center.y - r, center.x + r, center.y) else Rect(center.x - r, center.y - r, center.x, center.y)
-    drawCircle(Color.White, r + 1.5.dp.toPx(), center, alpha = 0.9f)
-    drawRect(Color.White, corner.topLeft - Offset(if (start) 0f else 1.5.dp.toPx(), 1.5.dp.toPx()), Size(r + 1.5.dp.toPx(), r + 1.5.dp.toPx()), alpha = 0.9f)
     drawCircle(color, r, center)
     drawRect(color, corner.topLeft, corner.size)
-}
-
-/**
- * Activation light show in screen space: a bloom rising from the bottom, a band of prism colours
- * sweeping to the top, and a frame of flowing colour that stays while [edge] is up.
- */
-private fun DrawScope.drawActivation(p: Float, edge: Float, degrees: Float, glow: GlowPalette, ambient: Float, drift: Float) {
-    val w = size.width
-    val h = size.height
-    if (p > 0f && p < 1f) {
-        val intensity = sin(p * PI).toFloat()
-        drawRect(
-            Brush.radialGradient(
-                listOf(glow.at(0.15f).copy(alpha = 0.45f * intensity), glow.at(0.55f).copy(alpha = 0.2f * intensity), Color.Transparent),
-                center = Offset(w / 2f, h * 1.05f),
-                radius = h * (0.35f + 0.45f * p),
-            ),
-        )
-        // A colourful band: horizontal prism gradient, masked to a soft vertical stripe.
-        val band = h * BAND_FRACTION
-        val cy = h + band / 2f - p * (h + band)
-        drawContext.canvas.saveLayer(Rect(0f, 0f, w, h), Paint())
-        drawRect(Brush.horizontalGradient(glow.loop, 0f, w), topLeft = Offset(0f, cy - band / 2f), size = Size(w, band))
-        drawRect(
-            Brush.verticalGradient(
-                0f to Color.Transparent,
-                0.5f to Color.Black.copy(alpha = 0.6f * intensity),
-                1f to Color.Transparent,
-                startY = cy - band / 2f,
-                endY = cy + band / 2f,
-            ),
-            topLeft = Offset(0f, cy - band / 2f),
-            size = Size(w, band),
-            blendMode = BlendMode.DstIn,
-        )
-        drawContext.canvas.restore()
-    }
-    // Four slow breaths per aurora cycle.
-    val breath = 0.5f + 0.5f * sin(drift * 8f * PI.toFloat())
-    val frame = max(edge, ambient * (0.22f + 0.16f * breath))
-    if (frame > 0f) {
-        val brush = spinBrush(glow.loop, center, degrees * 1.4f)
-        val corner = CornerRadius(34.dp.toPx())
-        for ((width, alpha) in listOf(22.dp.toPx() to 0.14f, 11.dp.toPx() to 0.32f, 4.dp.toPx() to 0.95f)) {
-            drawRoundRect(
-                brush,
-                topLeft = Offset(width / 2f, width / 2f),
-                size = Size(w - width, h - width),
-                cornerRadius = corner,
-                alpha = alpha * frame,
-                style = Stroke(width = width),
-            )
-        }
-    }
 }
 
 @Suppress("DEPRECATION")
@@ -738,7 +642,7 @@ private const val OUTCOME_DRAG = 2
 // -------------------------------------------------------------------- barcode badges
 
 @Composable
-private fun CodeBadges(c: OverlayController) {
+private fun CodeBadges(c: OverlayController, modifier: Modifier = Modifier) {
     val codes = c.codes
     // Badges appear with the main wave, once text is known too, so they can be placed clear of it.
     if (codes.isEmpty() || c.analyzing) return
@@ -748,15 +652,23 @@ private fun CodeBadges(c: OverlayController) {
     val gap = with(density) { 12.dp.roundToPx() }
     // Keep badges clear of the action row and bar at the bottom.
     val bottomReserve = WindowInsets.navigationBars.getBottom(density) + with(density) { 190.dp.roundToPx() }
+    // A badge that sits on its code moves off it while the code is selected, so the whole code shows.
+    val selectedId = (c.selection as? Selection.Code)?.code?.id
+    val moved = remember(codes) { codes.map { Animatable(0f) } }
+    LaunchedEffect(moved, selectedId) {
+        codes.forEachIndexed { i, code ->
+            launch { moved[i].animateTo(if (code.id == selectedId) 1f else 0f, spring(dampingRatio = 0.8f, stiffness = 500f)) }
+        }
+    }
     Layout(
         content = { codes.forEachIndexed { i, code -> CodeBadge(c, code, i) } },
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
     ) { measurables, constraints ->
         val placeables = measurables.map { it.measure(Constraints()) }
         val width = constraints.maxWidth
         val height = constraints.maxHeight
         val bottomLimit = height - bottomReserve
-        // Code outlines in view space, padded like the drawn glow, so badges never cover another code.
+        // Code outlines in view space, padded like the drawn state layer, so badges never cover another code.
         val outlines = codes.map { code ->
             val tl = c.toView(code.bounds.topLeft)
             val br = c.toView(code.bounds.bottomRight)
@@ -764,8 +676,9 @@ private fun CodeBadges(c: OverlayController) {
         }
         // Recognized text in view space: a badge above or below a code must not hide words.
         val text = words.map { w -> Rect(c.toView(w.box.topLeft), c.toView(w.box.bottomRight)) }
-        val taken = ArrayList<Rect>()
         layout(width, height) {
+            // Filled anew on every placement: the badges' moves re-run only this block, not the measuring above.
+            val taken = ArrayList<Rect>()
             placeables.forEachIndexed { i, p ->
                 val box = outlines[i]
                 val x = (box.center.x.roundToInt() - p.width / 2).coerceIn(gap, (width - p.width - gap).coerceAtLeast(gap))
@@ -786,8 +699,9 @@ private fun CodeBadges(c: OverlayController) {
                     ?: onCode.takeIf { fits(it, avoidText = false) }
                     ?: candidates.firstOrNull { fits(it, avoidText = false) }
                     ?: onCode
+                val off = if (y == onCode) candidates.firstOrNull { fits(it, avoidText = false) } ?: y else y
                 taken += rectAt(y)
-                p.place(x, y)
+                p.place(x, y + ((off - y) * moved[i].value).roundToInt())
             }
         }
     }
@@ -796,7 +710,6 @@ private fun CodeBadges(c: OverlayController) {
 @Composable
 private fun CodeBadge(c: OverlayController, code: DetectedCode, index: Int) {
     val (icon, label) = badgeFor(code)
-    val glow = rememberGlowPalette()
     val pop = remember(code.id, code.raw) { Animatable(0f) }
     LaunchedEffect(code.id, code.raw) {
         delay(180L + index * 70L)
@@ -808,7 +721,6 @@ private fun CodeBadge(c: OverlayController, code: DetectedCode, index: Int) {
         color = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         shadowElevation = 8.dp,
-        border = BorderStroke(2.dp, Brush.linearGradient(glow.colors)),
         modifier = Modifier.graphicsLayer {
             val v = pop.value
             scaleX = 0.4f + 0.6f * v
@@ -853,7 +765,7 @@ private fun BottomPanel(
     exit: () -> Float,
     barOffset: MutableFloatState,
     exitUp: MutableState<Boolean>,
-    beyondTop: MutableFloatState,
+    beyondEdge: MutableFloatState,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
@@ -869,8 +781,11 @@ private fun BottomPanel(
     // Pushing the bar this far up (to the top edge) closes Encircle when released.
     val closeAt = { (restTop - safeTopPx - closeMarginPx).coerceAtLeast(hidePx) }
     var armed by remember { mutableStateOf(false) }
-    val actions = remember(c.selection, c.layout, c.codes, c.image, c.entities) { c.actions() }
+    val actions = remember(c.selection, c.layout, c.codes, c.image, c.entities, c.analyzing) { c.actions() }
     val (title, preview) = barTexts(c)
+    // Long text shows two lines; tapping it expands the bar to the full text, scrollable.
+    var expanded by remember(c.selection) { mutableStateOf(false) }
+    var cut by remember(preview) { mutableStateOf(false) }
 
     Column(
         modifier
@@ -889,11 +804,11 @@ private fun BottomPanel(
             .draggable(
                 orientation = Orientation.Vertical,
                 state = rememberDraggableState { d ->
-                    // Up moves the bar out of the way; it never goes below its resting place.
-                    val next = (barOffset.floatValue + d).coerceIn(-(restTop + panelHeight), 0f)
+                    // Up moves the bar out of the way; down only as far as off the screen, to close.
+                    val next = (barOffset.floatValue + d).coerceIn(-(restTop + panelHeight), panelHeight)
                     barOffset.floatValue = next
-                    val past = -next - closeAt()
-                    beyondTop.floatValue = (past / panelHeight.coerceAtLeast(1f)).coerceIn(0f, 1f)
+                    val past = max(-next - closeAt(), next - panelHeight * 0.5f)
+                    beyondEdge.floatValue = (past / panelHeight.coerceAtLeast(1f)).coerceIn(0f, 1f)
                     val nowArmed = past > 0f
                     if (nowArmed != armed) {
                         armed = nowArmed
@@ -905,68 +820,85 @@ private fun BottomPanel(
                 onDragStopped = { velocity ->
                     val up = -barOffset.floatValue
                     val flungOut = velocity < -2600f && up > restTop * 0.35f
-                    if (armed || flungOut) {
-                        // Pushed out at the top: leave upwards.
-                        exitUp.value = true
+                    val flungDown = velocity > 2600f && -up > panelHeight * 0.2f
+                    if (armed || flungOut || flungDown) {
+                        // Pushed out at the top or the bottom: leave that way.
+                        exitUp.value = up > 0f
                         c.dismiss()
                     } else if (up < homeSnapPx) {
                         animate(barOffset.floatValue, 0f, animationSpec = spring(dampingRatio = 0.75f)) { v, _ ->
                             barOffset.floatValue = v
                         }
                     }
-                    // Anywhere else the bar simply stays where it was put.
+                    // Anywhere else above its resting place the bar simply stays where it was put.
                     armed = false
-                    beyondTop.floatValue = 0f
+                    beyondEdge.floatValue = 0f
                 },
             ),
     ) {
-        AnimatedContent(
-            targetState = actions,
-            contentKey = { list -> list.joinToString { it.label } },
-            transitionSpec = {
-                (fadeIn(tween(180)) + slideInVertically(tween(240)) { it / 2 }) togetherWith fadeOut(tween(90)) using
-                    SizeTransform(clip = false)
-            },
-            label = "actions",
-        ) { list ->
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(start = 4.dp, end = 4.dp, top = 8.dp, bottom = if (list.isEmpty()) 0.dp else 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                list.forEach { ActionButton(it) }
-            }
-        }
-
         Surface(
             shape = RoundedCornerShape(30.dp),
             color = scheme.surfaceContainerHigh,
-            shadowElevation = 10.dp,
+            shadowElevation = 8.dp,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)
+                        .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 10.dp)
                         .heightIn(min = 48.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = if (expanded) Alignment.Top else Alignment.CenterVertically,
                 ) {
                     LogoRing(Modifier.size(28.dp), busy = c.analyzing)
                     Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .animateContentSize()
+                            .then(
+                                if (cut || expanded) {
+                                    Modifier.clickable(
+                                        interactionSource = null,
+                                        indication = null,
+                                        onClickLabel = if (expanded) "Weniger anzeigen" else "Ganzen Text anzeigen",
+                                    ) { expanded = !expanded }
+                                } else {
+                                    Modifier
+                                },
+                            ),
+                    ) {
                         AnimatedContent(targetState = title, label = "title") {
                             Text(it, style = MaterialTheme.typography.labelLarge, color = scheme.primary, maxLines = 1)
                         }
-                        Text(
-                            preview,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = scheme.onSurface,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        if (expanded) {
+                            Text(
+                                preview,
+                                Modifier.heightIn(max = 240.dp).verticalScroll(rememberScrollState()),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = scheme.onSurface,
+                            )
+                        } else {
+                            Text(
+                                preview,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = scheme.onSurface,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                onTextLayout = { cut = it.hasVisualOverflow },
+                            )
+                        }
+                    }
+                    if (cut || expanded) {
+                        val turn by animateFloatAsState(if (expanded) 180f else 0f, label = "expand")
+                        IconButton(onClick = { expanded = !expanded }) {
+                            Icon(
+                                painterResource(R.drawable.ic_expand_more),
+                                if (expanded) "Weniger anzeigen" else "Ganzen Text anzeigen",
+                                Modifier.graphicsLayer { rotationZ = turn },
+                                tint = scheme.onSurfaceVariant,
+                            )
+                        }
                     }
                     if (c.selection != Selection.None) {
                         IconButton(onClick = { c.clearSelection() }) {
@@ -974,8 +906,45 @@ private fun BottomPanel(
                         }
                     }
                 }
+                AnimatedContent(
+                    targetState = actions,
+                    contentKey = { list -> list.joinToString { it.label } },
+                    transitionSpec = {
+                        (fadeIn(tween(180)) + slideInVertically(tween(240)) { it / 3 }) togetherWith fadeOut(tween(90)) using
+                            SizeTransform(clip = false)
+                    },
+                    label = "actions",
+                ) { list ->
+                    if (list.isNotEmpty()) ActionRow(list)
+                }
             }
         }
+    }
+}
+
+/** The actions for the current selection; the row fades out towards an edge it can still be scrolled past. */
+@Composable
+private fun ActionRow(actions: List<OverlayAction>) {
+    val scroll = rememberScrollState()
+    val fade = with(LocalDensity.current) { 24.dp.toPx() }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+            .drawWithContent {
+                drawContent()
+                if (scroll.canScrollBackward) {
+                    drawRect(Brush.horizontalGradient(listOf(Color.Transparent, Color.Black), 0f, fade), blendMode = BlendMode.DstIn)
+                }
+                if (scroll.canScrollForward) {
+                    drawRect(Brush.horizontalGradient(listOf(Color.Black, Color.Transparent), size.width - fade, size.width), blendMode = BlendMode.DstIn)
+                }
+            }
+            .horizontalScroll(scroll)
+            .padding(start = 16.dp, end = 16.dp, bottom = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        actions.forEach { ActionButton(it) }
     }
 }
 
@@ -987,17 +956,9 @@ private fun ActionButton(a: OverlayAction) {
         Text(a.label, maxLines = 1)
     }
     if (a.primary) {
-        Button(
-            onClick = a.run,
-            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
-        ) { content() }
+        Button(onClick = a.run, contentPadding = ButtonDefaults.ButtonWithIconContentPadding) { content() }
     } else {
-        ElevatedButton(
-            onClick = a.run,
-            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-            elevation = ButtonDefaults.elevatedButtonElevation(defaultElevation = 4.dp),
-        ) { content() }
+        FilledTonalButton(onClick = a.run, contentPadding = ButtonDefaults.ButtonWithIconContentPadding) { content() }
     }
 }
 
@@ -1005,18 +966,18 @@ private fun barTexts(c: OverlayController): Pair<String, String> {
     val pair = when {
         c.screenshotMissing -> "Kein Bildschirminhalt" to "Erlaube dem Assistenten, Screenshots zu verwenden."
         else -> when (val s = c.selection) {
-            Selection.None -> "Encircle" to when {
-                c.analyzing -> "Bildschirm wird gelesen …"
-                c.codes.size == 1 -> "1 Code erkannt · Tippe ihn an oder markiere Text"
-                c.codes.size > 1 -> "${c.codes.size} Codes erkannt · Tippe einen an oder markiere Text"
-                c.entities.isNotEmpty() -> entitySummary(c.entities) + " erkannt · Unterstrichenes antippen"
-                !c.layout.isEmpty -> "Tippe auf ein Wort, markiere Text oder kreise etwas ein"
-                else -> "Kein Text erkannt · Kreise einen Bereich ein"
+            Selection.None -> when {
+                c.analyzing -> "Bildschirm wird gelesen" to "Einkreisen geht schon jetzt"
+                c.codes.size == 1 -> "1 Code erkannt" to "Antippen oder Text markieren"
+                c.codes.size > 1 -> "${c.codes.size} Codes erkannt" to "Einen antippen oder Text markieren"
+                c.entities.isNotEmpty() -> entitySummary(c.entities) + " erkannt" to "Unterstrichenes antippen"
+                !c.layout.isEmpty -> "Text erkannt" to "Antippen, markieren oder einkreisen"
+                else -> "Kein Text erkannt" to "Einen Bereich einkreisen"
             }
             is Selection.Words -> c.selectedEntity()?.let { e -> entityTitle(e.kind) to entityDisplay(e) } ?: run {
                 val n = s.ids.size
                 (if (n == 1) "Text · 1 Wort" else "Text · $n Wörter") to
-                    c.layout.textOf(s.ids).replace('\n', ' ').take(400)
+                    c.layout.textOf(s.ids).replace('\n', ' ')
             }
             is Selection.Code -> "${s.code.formatName} · ${typeName(s.code.content)}" to describe(s.code)
             is Selection.Region -> "Bereich" to "Ausschnitt als Bild teilen oder kopieren"
