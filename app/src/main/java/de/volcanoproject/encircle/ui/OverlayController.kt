@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.get
 import de.volcanoproject.encircle.R
 import de.volcanoproject.encircle.actions.SystemActions
 import de.volcanoproject.encircle.analysis.CodeContent
@@ -55,7 +56,7 @@ sealed interface Selection {
         operator fun contains(i: Int) = ids.binarySearch(i) >= 0
     }
 
-    class Code(val code: DetectedCode) : Selection
+    class Code(val code: DetectedCode, val touch: Offset? = null) : Selection
 }
 
 enum class Handle { Start, End }
@@ -220,7 +221,7 @@ class OverlayController(private val context: Context, private val finish: () -> 
 
     fun onTap(view: Offset) {
         val p = toImage(view)
-        codeAt(p)?.let { selectCode(it); return }
+        codeAt(p)?.let { selectCode(it, p); return }
         val w = layout.wordAt(p, dp(10f))
         if (w == null) {
             dismissSelection()
@@ -247,7 +248,7 @@ class OverlayController(private val context: Context, private val finish: () -> 
 
     fun onLongPress(view: Offset) {
         val p = toImage(view)
-        codeAt(p)?.let { selectCode(it); return }
+        codeAt(p)?.let { selectCode(it, p); return }
         val w = layout.wordAt(p, dp(14f)) ?: return
         selectRange(layout.blockRange(w), HapticFeedbackConstants.LONG_PRESS)
     }
@@ -407,6 +408,26 @@ class OverlayController(private val context: Context, private val finish: () -> 
 
     fun selectEntity(e: TextEntity) = selectRange(e.first..e.last, confirm())
 
+    /**
+     * Whether the screen right around [outline] (screenshot pixels) is light, sampled on a ring [margin] dp
+     * outside its corners; null while the screenshot's pixels are not ready yet.
+     */
+    fun isOnLight(outline: List<Offset>, margin: Float): Boolean? {
+        val bmp = pixels ?: return null
+        val ring = expandPolygon(outline, dp(margin))
+        val samples = 32
+        var light = 0f
+        for (k in 0 until samples) {
+            val f = k * ring.size / samples.toFloat()
+            val a = ring[f.toInt() % ring.size]
+            val b = ring[(f.toInt() + 1) % ring.size]
+            val p = a + (b - a) * (f - f.toInt())
+            val argb = bmp[p.x.roundToInt().coerceIn(0, bmp.width - 1), p.y.roundToInt().coerceIn(0, bmp.height - 1)]
+            light += (0.2126f * ((argb shr 16) and 255) + 0.7152f * ((argb shr 8) and 255) + 0.0722f * (argb and 255)) / 255f
+        }
+        return light / samples > 0.5f
+    }
+
     private fun codeAt(p: Offset): DetectedCode? =
         codes.filter { c -> pointInPolygon(p, expandPolygon(c.corners, dp(12f))) }.minByOrNull { it.bounds.width * it.bounds.height }
 
@@ -440,8 +461,8 @@ class OverlayController(private val context: Context, private val finish: () -> 
         lastTickAt = SystemClock.uptimeMillis()
     }
 
-    fun selectCode(c: DetectedCode) {
-        selection = Selection.Code(c)
+    fun selectCode(c: DetectedCode, touch: Offset? = null) {
+        selection = Selection.Code(c, touch)
         haptics(confirm())
     }
 
@@ -467,7 +488,8 @@ class OverlayController(private val context: Context, private val finish: () -> 
         is Selection.Code -> codeActions(s.code)
     }
 
-    private fun idleActions(): List<OverlayAction> = buildList {
+    /** Offered once the whole screen has been read, so the buttons appear together instead of one by one. */
+    private fun idleActions(): List<OverlayAction> = if (analyzing) emptyList() else buildList {
         if (codes.size == 1) {
             val c = codes.first()
             add(OverlayAction(c.formatName + " anzeigen", R.drawable.ic_qr, primary = true) { selectCode(c) })
