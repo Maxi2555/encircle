@@ -80,6 +80,7 @@ class MainActivity : ComponentActivity() {
                                 onOpenAssistant = { SystemActions.openAssistSettings(this) },
                                 onOpenSettings = { SystemActions.openSettings(this, it) },
                                 onTry = ::tryOverlay,
+                                onCopy = { SystemActions.copyText(this, it) },
                             )
                         }
                     }
@@ -122,6 +123,7 @@ private fun SetupScreen(
     onOpenAssistant: () -> Unit,
     onOpenSettings: (actions: List<String>) -> Unit,
     onTry: () -> Unit,
+    onCopy: (String) -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     Column(
@@ -141,7 +143,7 @@ private fun SetupScreen(
             color = scheme.onSurfaceVariant,
         )
 
-        setup?.let { SetupSteps(it, onOpenAssistant, onOpenSettings, onTry) }
+        setup?.let { SetupSteps(it, onOpenAssistant, onOpenSettings, onTry, onCopy) }
 
         InfoCard(
             stringResource(R.string.home_usage_title),

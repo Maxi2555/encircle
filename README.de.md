@@ -40,7 +40,7 @@ Die Startseite der App führt durch drei Schritte, hakt jeden ab, sobald er erle
    - **Pixel mit Google-Launcher:** Circle to Search unter *Einstellungen › System › Navigationsmodus* ausschalten.
    - **Samsung:** Circle to Search unter *Einstellungen › Anzeige › Navigationsleiste* ausschalten.
 
-Auf GrapheneOS kann Android den Assistenten nach einem Neustart abmelden. Die App zeigt dann **Neu verbinden**. Wie man das dauerhaft behebt, steht in der [englischen README](README.md#set-up).
+Ohne Google-Spracherkennung (GrapheneOS, weitere Nutzer) meldet Android den Assistenten bei jedem Neustart ab, in weiteren Nutzern auch bei jedem Wechsel dorthin. Die App zeigt dann **Neu verbinden** und unter **Dauerhaft beheben** einen adb-Befehl, der das einmalig behebt. Hintergrund steht in der [englischen README](README.md#set-up).
 
 ## Mitmachen
 

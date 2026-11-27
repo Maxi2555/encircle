@@ -23,9 +23,12 @@
     </plurals>
     <string name="setup_assistant_title">Encircle als Assistent wählen</string>
     <string name="setup_assistant_text">Android startet nur den digitalen Assistenten über einen Kurzbefehl. Wähle in den Einstellungen Encircle aus.</string>
-    <string name="setup_assistant_disconnected">Encircle ist gewählt, aber Android hat es nach einem Neustart abgemeldet. Wähle in den Einstellungen kurz „Keine“ und dann wieder Encircle.</string>
+    <string name="setup_assistant_disconnected">Encircle ist gewählt, aber Android hat es beim Start des Geräts oder dieses Nutzers abgemeldet. Wähle in den Einstellungen kurz „Keine“ und dann wieder Encircle.</string>
     <string name="setup_choose_assistant">Assistent auswählen</string>
     <string name="setup_reconnect">Neu verbinden</string>
+    <string name="setup_fix_permanently">Dauerhaft beheben</string>
+    <string name="setup_fix_text">Android meldet Encircle bei jedem Start dieses Nutzers ab, solange kein Spracherkenner eingetragen ist, und wählt den von Encircle nie selbst aus. Führe diesen Befehl einmal per adb an einem Computer aus und verbinde danach neu:</string>
+    <string name="setup_copy_command">Befehl kopieren</string>
     <string name="setup_screen_title">Bildschirminhalt erlauben</string>
     <string name="setup_screen_text">Schalte auf derselben Seite „Bildschirm- und App-Daten verwenden“ und, falls vorhanden, „Screenshot verwenden“ ein. Ohne diese Freigabe sieht Encircle den Bildschirm nicht.</string>
     <string name="setup_open_access">Freigabe öffnen</string>

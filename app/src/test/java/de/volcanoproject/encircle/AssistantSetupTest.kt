@@ -22,6 +22,15 @@ class AssistantSetupTest {
     }
 
     @Test
+    fun recognizerCommandTargetsTheUser() {
+        assertEquals(
+            "adb shell settings --user 12 put secure voice_recognition_service " +
+                "de.volcanoproject.encircle/.assist.StubRecognitionService",
+            AssistantSetup.recognizerCommand(12, "de.volcanoproject.encircle/.assist.StubRecognitionService"),
+        )
+    }
+
+    @Test
     fun launcherFamilies() {
         assertEquals(LauncherFamily.Pixel, AssistantSetup.launcherFamilyFor(setOf(AssistantSetup.PIXEL_LAUNCHER)::contains))
         assertEquals(LauncherFamily.Samsung, AssistantSetup.launcherFamilyFor(setOf(AssistantSetup.SAMSUNG_LAUNCHER)::contains))

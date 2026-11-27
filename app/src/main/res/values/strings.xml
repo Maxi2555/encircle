@@ -30,9 +30,12 @@
     </plurals>
     <string name="setup_assistant_title">Choose Encircle as assistant</string>
     <string name="setup_assistant_text">Android only starts the digital assistant with a shortcut. Choose Encircle in the settings.</string>
-    <string name="setup_assistant_disconnected">Encircle is selected, but Android signed it out after a restart. In the settings, briefly choose “None” and then Encircle again.</string>
+    <string name="setup_assistant_disconnected">Encircle is selected, but Android signed it out when the device or this user started. In the settings, briefly choose “None” and then Encircle again.</string>
     <string name="setup_choose_assistant">Choose assistant</string>
     <string name="setup_reconnect">Reconnect</string>
+    <string name="setup_fix_permanently">Fix permanently</string>
+    <string name="setup_fix_text">Android signs Encircle out at every start of this user as long as no speech recognizer is set, and it never picks the one from Encircle by itself. Run this command once on a computer with adb, then reconnect:</string>
+    <string name="setup_copy_command">Copy command</string>
     <string name="setup_screen_title">Allow screen content</string>
     <string name="setup_screen_text">On the same page, turn on “Use text from screen” and, where offered, “Use screenshot”. Without this, Encircle cannot see the screen.</string>
     <string name="setup_open_access">Allow access</string>

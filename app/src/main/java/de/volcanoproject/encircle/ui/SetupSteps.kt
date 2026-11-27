@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -29,12 +31,17 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.volcanoproject.encircle.R
@@ -53,6 +60,7 @@ fun SetupSteps(
     onOpenAssistant: () -> Unit,
     onOpenSettings: (actions: List<String>) -> Unit,
     onTry: () -> Unit,
+    onCopy: (String) -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     val done = status.steps
@@ -98,6 +106,9 @@ fun SetupSteps(
                 )
                 Button(onClick = onOpenAssistant) {
                     Text(stringResource(if (status.disconnected) R.string.setup_reconnect else R.string.setup_choose_assistant))
+                }
+                if (status.disconnected && status.recognizerCommand.isNotEmpty()) {
+                    PermanentFix(status.recognizerCommand, onCopy)
                 }
             }
 
@@ -173,6 +184,31 @@ private fun Step(number: Int, title: String, state: StepState, content: @Composa
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { content() }
             }
+        }
+    }
+}
+
+/** Explains the one-time adb fix for the sign-out at every start and offers the command to copy. */
+@Composable
+private fun PermanentFix(command: String, onCopy: (String) -> Unit) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    TextButton(onClick = { open = !open }, contentPadding = PaddingValues(horizontal = 0.dp)) {
+        Text(stringResource(R.string.setup_fix_permanently))
+    }
+    AnimatedVisibility(open, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.setup_fix_text), style = MaterialTheme.typography.bodyMedium)
+            Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerHighest) {
+                SelectionContainer {
+                    Text(
+                        command,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(12.dp),
+                    )
+                }
+            }
+            FilledTonalButton(onClick = { onCopy(command) }) { Text(stringResource(R.string.setup_copy_command)) }
         }
     }
 }

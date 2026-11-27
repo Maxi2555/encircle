@@ -3,13 +3,16 @@
 
 package de.volcanoproject.encircle.setup
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Process
 import android.provider.Settings
 import androidx.annotation.StringRes
 import androidx.core.content.edit
 import de.volcanoproject.encircle.R
 import de.volcanoproject.encircle.assist.AssistService
+import de.volcanoproject.encircle.assist.StubRecognitionService
 
 /** How the user moves around the system: buttons or gestures. */
 enum class Navigation { Buttons, Gestures }
@@ -34,6 +37,8 @@ data class SetupStatus(
     val screenContent: Boolean,
     val shortcutUsed: Boolean,
     val plan: ShortcutPlan,
+    /** adb command that keeps Encircle connected across restarts, see [AssistantSetup.recognizerCommand]. */
+    val recognizerCommand: String = "",
 ) {
     val steps: List<Boolean> get() = listOf(assistant, screenContent, shortcutUsed)
     val stepsLeft: Int get() = steps.count { !it }
@@ -66,6 +71,7 @@ object AssistantSetup {
             screenContent = screenContentAllowed(context),
             shortcutUsed = prefs(context).getBoolean(shortcutKey(navigation), false),
             plan = plan(navigation, launcherFamily(context)),
+            recognizerCommand = recognizerCommand(context),
         )
     }
 
@@ -79,6 +85,22 @@ object AssistantSetup {
     fun markOnboardingDone(context: Context) {
         prefs(context).edit { putBoolean(KEY_ONBOARDING_DONE, true) }
     }
+
+    /**
+     * AOSP unsets a non-system assistant whenever a user starts without a default speech recognizer, and
+     * since Android 17 it never picks a third-party recognizer by itself. On systems without Google's
+     * recognizer (GrapheneOS, secondary users) Encircle is therefore signed out at every boot and, for
+     * secondary users, at every switch. Only Settings or adb may set the recognizer, so the app offers
+     * this command; the setting is per user.
+     */
+    fun recognizerCommand(context: Context): String = recognizerCommand(
+        // UserHandle.getIdentifier() is hidden; hashCode() returns the same user id.
+        Process.myUserHandle().hashCode(),
+        ComponentName(context, StubRecognitionService::class.java).flattenToShortString(),
+    )
+
+    internal fun recognizerCommand(userId: Int, recognizer: String) =
+        "adb shell settings --user $userId put secure voice_recognition_service $recognizer"
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
