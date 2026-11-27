@@ -79,6 +79,7 @@ object SystemActions {
             e.description?.let { putExtra(CalendarContract.Events.DESCRIPTION, it) }
             e.start?.let { putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, it) }
             e.end?.let { putExtra(CalendarContract.EXTRA_EVENT_END_TIME, it) }
+            putExtra(CalendarContract.EXTRA_EVENT_ALL_DAY, e.allDay)
         },
     )
 
@@ -88,10 +89,11 @@ object SystemActions {
         val builder = WifiNetworkSuggestion.Builder().setSsid(w.ssid)
         val pw = w.password
         when {
-            pw == null || w.security == "NOPASS" -> Unit
+            w.security == "NOPASS" -> Unit
+            pw == null || w.security.contains("EAP") -> return false
             w.security.contains("SAE") || w.security.contains("WPA3") -> builder.setWpa3Passphrase(pw)
             w.security.startsWith("WPA") || w.security.isEmpty() -> builder.setWpa2Passphrase(pw)
-            else -> return false // WEP and enterprise networks cannot be suggested.
+            else -> return false // WEP networks cannot be suggested.
         }
         if (w.hidden) builder.setIsHiddenSsid(true)
         val suggestion = try { builder.build() } catch (e: IllegalArgumentException) { return false }
@@ -103,6 +105,10 @@ object SystemActions {
     }
 
     fun openWifiSettings(context: Context): Boolean = launch(context, Intent(Settings.ACTION_WIFI_SETTINGS))
+
+    /** Opens the first settings page this device knows, falling back to the main settings screen. */
+    fun openSettings(context: Context, actions: List<String>): Boolean =
+        actions.any { launch(context, Intent(it)) } || launch(context, Intent(Settings.ACTION_SETTINGS))
 
     fun openAssistSettings(context: Context): Boolean =
         launch(context, Intent(Settings.ACTION_VOICE_INPUT_SETTINGS)) ||
@@ -121,11 +127,6 @@ object SystemActions {
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             .apply { clipData = ClipData.newRawUri(null, uri) }
         return launch(context, Intent.createChooser(send, null).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
-    }
-
-    fun copyImage(context: Context, uri: Uri) {
-        context.getSystemService(ClipboardManager::class.java)
-            .setPrimaryClip(ClipData.newUri(context.contentResolver, "Bild", uri))
     }
 
     fun pruneShared(context: Context) {

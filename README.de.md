@@ -30,6 +30,8 @@ Wer neue Funktionen früher ausprobieren möchte, findet Beta-Versionen wie `0.2
 
 ## Einrichtung
 
+Die Startseite der App führt durch drei Schritte, hakt jeden ab, sobald er erledigt ist, und öffnet die passende Einstellungsseite für dein Gerät. Kurz gesagt:
+
 1. Encircle öffnen, **Assistent auswählen** antippen und Encircle als App für den digitalen Assistenten wählen.
 2. In denselben Einstellungen **Bildschirm- und App-Daten verwenden** und, falls vorhanden, **Screenshot verwenden** einschalten.
 3. Den Aufruf passend zum Gerät einrichten:

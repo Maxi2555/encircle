@@ -7,9 +7,13 @@ import android.net.Uri
 import android.util.Patterns
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import java.text.SimpleDateFormat
+import java.time.DateTimeException
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.Locale
-import java.util.TimeZone
 
 /** A barcode found on screen. Corners are screenshot pixels, clockwise from top-left. */
 class DetectedCode(
@@ -35,7 +39,7 @@ sealed interface CodeContent {
     data class Phone(val number: String) : CodeContent
     data class Sms(val number: String, val body: String?) : CodeContent
     data class Geo(val uri: String) : CodeContent
-    data class Event(val title: String?, val start: Long?, val end: Long?, val location: String?, val description: String?) : CodeContent
+    data class Event(val title: String?, val start: Long?, val end: Long?, val allDay: Boolean, val location: String?, val description: String?) : CodeContent
     data class OtherUri(val uri: String) : CodeContent
     data class Product(val code: String) : CodeContent
     data class Text(val text: String) : CodeContent
@@ -111,22 +115,19 @@ object CodeParser {
         val rest = t.substring(7)
         val to = Uri.decode(rest.substringBefore('?'))
         val query = rest.substringAfter('?', "")
-        fun param(name: String) = query.split('&')
-            .firstOrNull { it.substringBefore('=').equals(name, ignoreCase = true) }
-            ?.substringAfter('=')?.let(Uri::decode)
-        return CodeContent.Email(to, param("subject"), param("body"))
+        return CodeContent.Email(to, queryParam(query, "subject"), queryParam(query, "body"))
     }
 
     private fun parseSms(t: String): CodeContent {
         val rest = t.substringAfter(':')
-        val number = rest.substringBefore(':').substringBefore('?')
-        val body = when {
-            rest.contains(':') -> rest.substringAfter(':')
-            rest.contains("body=") -> Uri.decode(rest.substringAfter("body="))
-            else -> null
-        }
-        return CodeContent.Sms(number, body)
+        val query = if (t.startsWith("SMSTO:", ignoreCase = true)) "" else rest.substringAfter('?', "")
+        if (query.isEmpty()) return CodeContent.Sms(rest.substringBefore(':'), rest.substringAfter(':', "").ifEmpty { null })
+        return CodeContent.Sms(rest.substringBefore('?'), queryParam(query, "body"))
     }
+
+    private fun queryParam(query: String, name: String): String? = query.split('&')
+        .firstOrNull { it.substringBefore('=').equals(name, ignoreCase = true) }
+        ?.substringAfter('=')?.let(Uri::decode)
 
     private fun vcardName(v: String): String? {
         val lines = v.lines()
@@ -136,48 +137,67 @@ object CodeParser {
             ?.substringAfter(':')?.split(';')?.take(2)?.filter { it.isNotBlank() }?.reversed()?.joinToString(" ")
     }
 
+    private val LINE_BREAK = Regex("\r\n|\r|\n")
+
+    private fun vcardText(v: String) =
+        v.replace("\\", "\\\\").replace(LINE_BREAK) { "\\n" }.replace(",", "\\,").replace(";", "\\;")
+
+    private fun oneLine(v: String) = v.replace(LINE_BREAK, "")
+
     private fun mecardToVcard(t: String): CodeContent {
         val f = fields(t.substringAfter(':'))
         val nameParts = f["N"].orEmpty().split(',').map { it.trim() }
         val display = nameParts.reversed().filter { it.isNotEmpty() }.joinToString(" ")
         val sb = StringBuilder("BEGIN:VCARD\r\nVERSION:3.0\r\n")
-        sb.append("N:").append(nameParts.getOrElse(0) { "" }).append(';').append(nameParts.getOrElse(1) { "" }).append("\r\n")
-        if (display.isNotEmpty()) sb.append("FN:").append(display).append("\r\n")
-        f["TEL"]?.let { sb.append("TEL:").append(it).append("\r\n") }
-        f["EMAIL"]?.let { sb.append("EMAIL:").append(it).append("\r\n") }
-        f["ADR"]?.let { sb.append("ADR:;;").append(it).append("\r\n") }
-        f["URL"]?.let { sb.append("URL:").append(it).append("\r\n") }
-        f["ORG"]?.let { sb.append("ORG:").append(it).append("\r\n") }
-        f["NOTE"]?.let { sb.append("NOTE:").append(it).append("\r\n") }
+        sb.append("N:").append(vcardText(nameParts.getOrElse(0) { "" })).append(';').append(vcardText(nameParts.getOrElse(1) { "" })).append("\r\n")
+        if (display.isNotEmpty()) sb.append("FN:").append(vcardText(display)).append("\r\n")
+        f["TEL"]?.let { sb.append("TEL:").append(oneLine(it)).append("\r\n") }
+        f["EMAIL"]?.let { sb.append("EMAIL:").append(oneLine(it)).append("\r\n") }
+        f["ADR"]?.let { sb.append("ADR:;;").append(vcardText(it)).append("\r\n") }
+        f["URL"]?.let { sb.append("URL:").append(oneLine(it)).append("\r\n") }
+        f["ORG"]?.let { sb.append("ORG:").append(vcardText(it)).append("\r\n") }
+        f["NOTE"]?.let { sb.append("NOTE:").append(vcardText(it)).append("\r\n") }
         sb.append("END:VCARD\r\n")
         return CodeContent.Contact(sb.toString(), display.ifEmpty { null })
     }
 
+    private val FOLD = Regex("""\r?\n[ \t]""")
+    private val ICS_ESCAPE = Regex("""\\([nN,;\\])""")
+    private val ICS_DATE_TIME = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")
+
+    private fun icsText(v: String) = ICS_ESCAPE.replace(v) { m ->
+        m.groupValues[1].let { if (it.equals("n", ignoreCase = true)) "\n" else it }
+    }
+
     private fun parseEvent(t: String): CodeContent {
-        fun prop(name: String): Pair<String, String>? = t.lines().firstOrNull {
+        val lines = t.replace(FOLD, "").lines()
+        fun prop(name: String): Pair<String, String>? = lines.firstOrNull {
             val u = it.uppercase(Locale.ROOT)
             u.startsWith("$name:") || u.startsWith("$name;")
         }?.let { line -> line.substringBefore(':') to line.substringAfter(':').trim() }
+        val start = prop("DTSTART")
         return CodeContent.Event(
-            title = prop("SUMMARY")?.second,
-            start = prop("DTSTART")?.let { parseIcsDate(it.first, it.second) },
+            title = prop("SUMMARY")?.second?.let(::icsText),
+            start = start?.let { parseIcsDate(it.first, it.second) },
             end = prop("DTEND")?.let { parseIcsDate(it.first, it.second) },
-            location = prop("LOCATION")?.second?.replace("\\,", ","),
-            description = prop("DESCRIPTION")?.second?.replace("\\n", "\n")?.replace("\\,", ","),
+            allDay = start?.second?.length == 8,
+            location = prop("LOCATION")?.second?.let(::icsText),
+            description = prop("DESCRIPTION")?.second?.let(::icsText),
         )
     }
 
     private fun parseIcsDate(params: String, value: String): Long? = try {
+        val tzid = params.split(';').firstOrNull { it.startsWith("TZID=", ignoreCase = true) }
+            ?.substringAfter('=')?.trim('"')
         when {
-            value.length == 8 -> SimpleDateFormat("yyyyMMdd", Locale.ROOT).parse(value)?.time
-            value.endsWith("Z") -> SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'", Locale.ROOT)
-                .apply { timeZone = TimeZone.getTimeZone("UTC") }.parse(value)?.time
-            else -> SimpleDateFormat("yyyyMMdd'T'HHmmss", Locale.ROOT).apply {
-                params.substringAfter("TZID=", "").takeIf { it.isNotEmpty() }
-                    ?.let { timeZone = TimeZone.getTimeZone(it) }
-            }.parse(value)?.time
+            value.length == 8 -> LocalDate.parse(value, DateTimeFormatter.BASIC_ISO_DATE)
+                .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            value.endsWith("Z") -> LocalDateTime.parse(value.dropLast(1), ICS_DATE_TIME)
+                .toInstant(ZoneOffset.UTC).toEpochMilli()
+            else -> LocalDateTime.parse(value, ICS_DATE_TIME)
+                .atZone(tzid?.let(ZoneId::of) ?: ZoneId.systemDefault()).toInstant().toEpochMilli()
         }
-    } catch (_: Exception) {
+    } catch (_: DateTimeException) {
         null
     }
 }

@@ -17,6 +17,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -135,12 +137,52 @@ class SelectionLogicTest {
     }
 
     @Test
+    fun codeParser_mecardValuesAreEscaped() {
+        val c = CodeParser.parse("MECARD:N:Muster,Erika;NOTE:a\nTEL:999\\;b,c;TEL:+4930123;;", false) as CodeContent.Contact
+        assertTrue(c.vcard.contains("\r\nNOTE:a\\nTEL:999\\;b\\,c\r\n"))
+        assertFalse(c.vcard.contains("\nTEL:999"))
+        assertTrue(c.vcard.contains("\r\nTEL:+4930123\r\n"))
+    }
+
+    @Test
+    fun codeParser_smstoKeepsColonsAndQuestionMarks() {
+        assertEquals(CodeContent.Sms("+49123", "Wann? Um 8:30"), CodeParser.parse("SMSTO:+49123:Wann? Um 8:30", false))
+        assertEquals(CodeContent.Sms("+49123", null), CodeParser.parse("SMSTO:+49123", false))
+    }
+
+    @Test
     fun codeParser_event() {
         val c = CodeParser.parse("BEGIN:VEVENT\nSUMMARY:Treffen\nDTSTART:20261201T100000Z\nLOCATION:Berlin\nEND:VEVENT", false)
         c as CodeContent.Event
         assertEquals("Treffen", c.title)
         assertEquals(1796119200000L, c.start)
         assertEquals("Berlin", c.location)
+        assertFalse(c.allDay)
+    }
+
+    private fun event(body: String) = CodeParser.parse("BEGIN:VEVENT\r\n$body\r\nEND:VEVENT", false) as CodeContent.Event
+
+    @Test
+    fun codeParser_allDayEvent() {
+        val c = event("DTSTART;VALUE=DATE:20261201\r\nDTEND;VALUE=DATE:20261202")
+        assertTrue(c.allDay)
+        assertEquals(LocalDate.of(2026, 12, 1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(), c.start)
+        assertEquals(LocalDate.of(2026, 12, 2).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(), c.end)
+    }
+
+    @Test
+    fun codeParser_eventTimeZone() {
+        assertEquals(1796119200000L, event("DTSTART;TZID=Europe/Berlin:20261201T110000").start)
+        assertEquals(1796119200000L, event("DTSTART;TZID=\"Europe/Berlin\";X-FOO=1:20261201T110000").start)
+        assertEquals(null, event("DTSTART;TZID=W. Europe Standard Time:20261201T110000").start)
+    }
+
+    @Test
+    fun codeParser_eventFoldingAndEscapes() {
+        val c = event("SUMMARY:Tre\r\n ffen\r\nLOCATION:A\\, B\\; C\\\\D\r\nDESCRIPTION:x\\Ny\\nz")
+        assertEquals("Treffen", c.title)
+        assertEquals("A, B; C\\D", c.location)
+        assertEquals("x\ny\nz", c.description)
     }
 
     @Test

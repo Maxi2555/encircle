@@ -24,9 +24,15 @@ class RawLine(val elements: List<RawElement>, val sourceBlock: Int)
  */
 object LayoutBuilder {
 
-    private class Line(var elements: List<RawElement>, val source: Int) {
-        val box: Rect get() = union(elements.map { it.box })
-        val height: Float get() = median(elements.map { it.box.height })
+    private class Line(elements: List<RawElement>, val source: Int) {
+        var elements = elements
+            set(value) {
+                field = value
+                box = union(value.map { it.box })
+                height = median(value.map { it.box.height })
+            }
+        var box = union(elements.map { it.box }); private set
+        var height = median(elements.map { it.box.height }); private set
     }
 
     fun build(raw: List<RawLine>): TextLayout {
