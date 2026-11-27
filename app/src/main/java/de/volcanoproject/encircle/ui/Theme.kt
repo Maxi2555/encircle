@@ -7,6 +7,7 @@ import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -23,6 +24,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -36,6 +38,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.atan2
 
 @Composable
@@ -160,6 +164,77 @@ fun LogoRing(modifier: Modifier = Modifier, busy: Boolean = false) {
         }
     }
 }
+
+/**
+ * The logo drawing itself: the ring grows from nothing into the open circle while turning into place,
+ * then the star flashes up in its gap with a burst of light. It ends exactly like a resting [LogoRing].
+ * [onRevealed] fires when the star has appeared, so text can follow it. With [revealed] it starts at rest,
+ * for when it has played before.
+ */
+@Composable
+fun LogoReveal(modifier: Modifier = Modifier, revealed: Boolean = false, onRevealed: () -> Unit = {}) {
+    val glow = rememberGlowPalette()
+    val start = if (revealed) 1f else 0f
+    val ring = remember { Animatable(start) }
+    val star = remember { Animatable(start) }
+    val burst = remember { Animatable(start) }
+    val reveal by rememberUpdatedState(onRevealed)
+    LaunchedEffect(Unit) {
+        if (ring.value >= 1f) return@LaunchedEffect
+        delay(REVEAL_DELAY_MS)
+        ring.animateTo(1f, tween(REVEAL_RING_MS, easing = FastOutSlowInEasing))
+        launch { burst.animateTo(1f, tween(REVEAL_BURST_MS, easing = LinearOutSlowInEasing)) }
+        launch {
+            delay(REVEAL_BURST_MS / 3L)
+            reveal()
+        }
+        star.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = Spring.StiffnessMediumLow))
+    }
+    Canvas(modifier) {
+        val stroke = size.minDimension * 0.13f
+        val r = ring.value
+        val k = (size.minDimension - 2 * stroke) / 2f / ICON_RING
+        val at = center + Offset(STAR_X * k, STAR_Y * k)
+        val b = burst.value
+        if (b > 0f && b < 1f) {
+            // A soft flash of light around the star as it appears.
+            val radius = STAR_SIZE * k * (1.2f + 3.2f * b)
+            drawCircle(
+                Brush.radialGradient(
+                    listOf(glow.flow(0.1f).copy(alpha = 0.7f * (1f - b)), glow.flow(0.4f).copy(alpha = 0.25f * (1f - b)), Color.Transparent),
+                    center = at,
+                    radius = radius,
+                ),
+                radius = radius,
+                center = at,
+            )
+        }
+        val s = star.value
+        if (s > 0f) {
+            val turn = ((STAR_ANGLE - LOGO_REST) % 360f + 360f) % 360f / 360f
+            scale(s.coerceAtLeast(0f), at) {
+                drawPath(starPath(at, STAR_SIZE * k), glow.flow(turn), alpha = s.coerceIn(0f, 1f))
+            }
+        }
+        if (r > 0f) {
+            rotate(LOGO_REST - 110f * (1f - r)) {
+                drawArc(
+                    brush = Brush.sweepGradient(glow.loop),
+                    startAngle = 20f,
+                    sweepAngle = 310f * r,
+                    useCenter = false,
+                    topLeft = Offset(stroke, stroke),
+                    size = Size(size.width - 2 * stroke, size.height - 2 * stroke),
+                    style = Stroke(width = stroke, cap = StrokeCap.Round),
+                )
+            }
+        }
+    }
+}
+
+private const val REVEAL_DELAY_MS = 250L
+private const val REVEAL_RING_MS = 1100
+private const val REVEAL_BURST_MS = 700
 
 /**
  * The star as in the launcher icon, whose ring has a radius of [ICON_RING]: its offset from the ring's

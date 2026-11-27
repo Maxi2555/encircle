@@ -58,6 +58,7 @@ The selection model: words in reading order with line and paragraph indices, plu
 | `ui/Geometry` | Stroke analysis (lasso detection by closure and turning angle), polygon helpers, path smoothing. |
 | `ui/Theme` | Material You theme and `GlowPalette`, a vivid palette derived from the wallpaper's accent colour for all light effects. |
 | `ui/SetupSteps`, `setup/AssistantSetup` | Guided setup on the start screen: assistant role, screen content access and the system shortcut. The shortcut advice depends on navigation mode and the installed system launcher (Pixel, Samsung, AOSP), which handles gestures even when another app is the default home screen. Android does not expose whether the home long-press or corner swipe is enabled, so the step is ticked off per navigation mode by the first session the system starts with `SHOW_SOURCE_ASSIST_GESTURE`. |
+| `ui/Onboarding` | Full-screen tutorial on first start: `LogoReveal` (in `ui/Theme`) draws the logo, then the setup steps follow one per page and a practice page waits until Encircle has been started through the shortcut. The pager only offers pages up to the first unfinished step. Shown until finished or postponed once (`AssistantSetup.onboardingDone`). |
 
 Coordinates: everything in the controller is in screenshot pixels. The UI keeps `origin` and `scale` up to date to map between view and screenshot space.
 
