@@ -18,6 +18,7 @@ import android.provider.CalendarContract
 import android.provider.Settings
 import android.util.Log
 import androidx.core.content.FileProvider
+import de.volcanoproject.encircle.R
 import de.volcanoproject.encircle.analysis.CodeContent
 import java.io.File
 
@@ -27,7 +28,7 @@ object SystemActions {
     private const val SHARED_DIR = "shared"
     private const val SHARED_MAX_AGE_MS = 60 * 60 * 1000L
 
-    fun copyText(context: Context, text: String, label: String = "Text", sensitive: Boolean = false) {
+    fun copyText(context: Context, text: String, label: String = context.getString(R.string.clip_text), sensitive: Boolean = false) {
         val clip = ClipData.newPlainText(label, text)
         if (sensitive && Build.VERSION.SDK_INT >= 33) {
             clip.description.extras = PersistableBundle().apply { putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true) }

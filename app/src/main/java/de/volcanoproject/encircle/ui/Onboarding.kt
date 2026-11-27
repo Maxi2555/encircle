@@ -62,6 +62,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -113,7 +114,7 @@ fun Onboarding(status: SetupStatus, onOpenAssistant: () -> Unit, onFinish: () ->
         // Top bar: leave for later, except on the last page where finishing is the main action.
         Box(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 8.dp), contentAlignment = Alignment.CenterEnd) {
             if (page != Page.Done) {
-                TextButton(onClick = onFinish) { Text("Später einrichten") }
+                TextButton(onClick = onFinish) { Text(stringResource(R.string.onboarding_later)) }
             }
         }
 
@@ -139,7 +140,7 @@ fun Onboarding(status: SetupStatus, onOpenAssistant: () -> Unit, onFinish: () ->
             PageDots(count = pages.size, current = pager.currentPage)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 if (pager.currentPage > 0) {
-                    TextButton(onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage - 1) } }) { Text("Zurück") }
+                    TextButton(onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage - 1) } }) { Text(stringResource(R.string.onboarding_back)) }
                 }
                 Spacer(Modifier.weight(1f))
                 val last = page == Page.Done
@@ -149,7 +150,9 @@ fun Onboarding(status: SetupStatus, onOpenAssistant: () -> Unit, onFinish: () ->
                     },
                     enabled = last || page.passed(status),
                 ) {
-                    AnimatedContent(targetState = if (last) "Los geht's" else "Weiter", label = "next") { Text(it) }
+                    AnimatedContent(targetState = if (last) R.string.onboarding_start else R.string.onboarding_next, label = "next") {
+                        Text(stringResource(it))
+                    }
                 }
             }
         }
@@ -158,8 +161,9 @@ fun Onboarding(status: SetupStatus, onOpenAssistant: () -> Unit, onFinish: () ->
 
 @Composable
 private fun PageDots(count: Int, current: Int) {
+    val pages = stringResource(R.string.onboarding_page, current + 1, count)
     Row(
-        Modifier.fillMaxWidth().semantics { contentDescription = "Seite ${current + 1} von $count" },
+        Modifier.fillMaxWidth().semantics { contentDescription = pages },
         horizontalArrangement = Arrangement.Center,
     ) {
         repeat(count) { i ->
@@ -201,14 +205,14 @@ private fun WelcomePage() {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                "Encircle",
+                stringResource(R.string.app_name),
                 style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = spacing.em,
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                "Text, Links und Codes auf deinem Bildschirm markieren, kopieren und teilen. Komplett offline.",
+                stringResource(R.string.onboarding_tagline),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -221,18 +225,12 @@ private fun WelcomePage() {
 private fun AssistantPage(status: SetupStatus, onOpenAssistant: () -> Unit) {
     StepPage(
         icon = R.drawable.ic_settings,
-        step = "Schritt 1 von 3",
-        title = "Encircle als Assistent wählen",
-        text = if (status.disconnected) {
-            "Encircle ist gewählt, aber Android hat es nach einem Neustart abgemeldet. " +
-                "Wähle in den Einstellungen kurz „Keine“ und dann wieder Encircle."
-        } else {
-            "Android startet nur den digitalen Assistenten über einen Kurzbefehl wie langes Drücken auf Home. " +
-                "Wähle dafür Encircle als Assistenten aus und bestätige den Hinweis."
-        },
+        step = stringResource(R.string.onboarding_step, 1, 3),
+        title = stringResource(R.string.setup_assistant_title),
+        text = stringResource(if (status.disconnected) R.string.setup_assistant_disconnected else R.string.onboarding_assistant_text),
         done = status.assistant,
     ) {
-        Button(onClick = onOpenAssistant) { Text(if (status.disconnected) "Neu verbinden" else "Assistent auswählen") }
+        Button(onClick = onOpenAssistant) { Text(stringResource(if (status.disconnected) R.string.setup_reconnect else R.string.setup_choose_assistant)) }
     }
 }
 
@@ -240,14 +238,12 @@ private fun AssistantPage(status: SetupStatus, onOpenAssistant: () -> Unit) {
 private fun ScreenContentPage(status: SetupStatus, onOpenAssistant: () -> Unit) {
     StepPage(
         icon = R.drawable.ic_image,
-        step = "Schritt 2 von 3",
-        title = "Bildschirminhalt erlauben",
-        text = "Schalte auf derselben Seite „Bildschirm- und App-Daten verwenden“ und, falls vorhanden, " +
-            "„Screenshot verwenden“ ein. Encircle liest den Bildschirm nur, wenn du es aufrufst, und alles " +
-            "bleibt auf dem Gerät.",
+        step = stringResource(R.string.onboarding_step, 2, 3),
+        title = stringResource(R.string.setup_screen_title),
+        text = stringResource(R.string.onboarding_screen_text),
         done = status.screenContent,
     ) {
-        Button(onClick = onOpenAssistant) { Text("Freigabe öffnen") }
+        Button(onClick = onOpenAssistant) { Text(stringResource(R.string.setup_open_access)) }
     }
 }
 
@@ -256,15 +252,15 @@ private fun ShortcutPage(status: SetupStatus) {
     val context = LocalContext.current
     StepPage(
         icon = R.drawable.ic_play,
-        step = "Schritt 3 von 3",
-        title = status.plan.title,
-        text = status.plan.howTo + " Im nächsten Schritt probierst du ihn aus.",
+        step = stringResource(R.string.onboarding_step, 3, 3),
+        title = stringResource(status.plan.title),
+        text = stringResource(R.string.onboarding_shortcut_text, stringResource(status.plan.howTo)),
         done = null,
     ) {
-        Button(onClick = { SystemActions.openSettings(context, status.plan.settingsActions) }) { Text(status.plan.buttonLabel) }
+        Button(onClick = { SystemActions.openSettings(context, status.plan.settingsActions) }) { Text(stringResource(status.plan.buttonLabel)) }
         if (status.plan.offerButtonNavigation) {
             TextButton(onClick = { SystemActions.openSettings(context, listOf(AssistantSetup.ACTION_NAVIGATION_MODE)) }) {
-                Text("Lieber Tasten-Navigation")
+                Text(stringResource(R.string.setup_prefer_buttons))
             }
         }
     }
@@ -278,10 +274,9 @@ private fun PracticePage(status: SetupStatus) {
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        Text("Probier es aus", style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.onboarding_practice_title), style = MaterialTheme.typography.headlineMedium)
         Text(
-            "Starte Encircle jetzt über deinen Kurzbefehl: ${status.plan.title}. Markiere dann den Satz unten " +
-                "oder tippe auf den QR-Code.",
+            stringResource(R.string.onboarding_practice_text, stringResource(status.plan.title)),
             style = MaterialTheme.typography.bodyLarge,
             color = scheme.onSurfaceVariant,
         )
@@ -291,7 +286,7 @@ private fun PracticePage(status: SetupStatus) {
         ) {
             Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "Mehr über Encircle steht auf encircle.example.org. Fragen gern an hallo@example.org.",
+                    stringResource(R.string.onboarding_practice_sample),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
@@ -314,7 +309,7 @@ private fun PracticePage(status: SetupStatus) {
             label = "practice",
         ) { worked ->
             if (worked) {
-                StatusChip(done = true, text = "Geklappt! Encircle startet über deinen Kurzbefehl.")
+                StatusChip(done = true, text = stringResource(R.string.onboarding_practice_done))
             } else {
                 WaitingChip()
             }
@@ -326,12 +321,12 @@ private fun PracticePage(status: SetupStatus) {
 private fun DonePage(status: SetupStatus) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
         LogoRing(Modifier.size(96.dp))
-        Text("Alles bereit", style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.onboarding_done_title), style = MaterialTheme.typography.headlineMedium)
         Text(
             if (status.shortcutUsed) {
-                "Starte Encircle jederzeit so: ${status.plan.title}. Auf der Startseite findest du alle Gesten zum Markieren."
+                stringResource(R.string.onboarding_done_text, stringResource(status.plan.title))
             } else {
-                "Auf der Startseite findest du die Einrichtung und alle Gesten zum Markieren."
+                stringResource(R.string.onboarding_done_text_later)
             },
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -366,7 +361,7 @@ private fun StepPage(
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { actions() }
         if (done != null) {
             AnimatedContent(targetState = done, label = "status") { isDone ->
-                StatusChip(done = isDone, text = if (isDone) "Erledigt" else "Noch offen. Weiter geht es, sobald es erledigt ist.")
+                StatusChip(done = isDone, text = stringResource(if (isDone) R.string.setup_done else R.string.onboarding_status_open))
             }
         }
     }
@@ -404,7 +399,7 @@ private fun WaitingChip() {
         Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(10.dp).alpha(pulse).clip(CircleShape).background(scheme.primary))
             Spacer(Modifier.width(10.dp))
-            Text("Warte auf den ersten Start über den Kurzbefehl …", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.onboarding_practice_waiting), style = MaterialTheme.typography.labelLarge)
         }
     }
 }
@@ -447,7 +442,8 @@ private val PRACTICE_QR = listOf(
 
 @Composable
 private fun QrCode(modifier: Modifier = Modifier) {
-    Canvas(modifier.semantics { contentDescription = "QR-Code zum Encircle-Projekt" }) {
+    val description = stringResource(R.string.onboarding_qr_description)
+    Canvas(modifier.semantics { contentDescription = description }) {
         val n = PRACTICE_QR.size
         val cell = size.minDimension / n
         PRACTICE_QR.forEachIndexed { y, row ->

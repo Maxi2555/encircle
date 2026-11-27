@@ -6,7 +6,9 @@ package de.volcanoproject.encircle.setup
 import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.Settings
+import androidx.annotation.StringRes
 import androidx.core.content.edit
+import de.volcanoproject.encircle.R
 import de.volcanoproject.encircle.assist.AssistService
 
 /** How the user moves around the system: buttons or gestures. */
@@ -17,9 +19,9 @@ enum class LauncherFamily { Pixel, Samsung, Aosp }
 
 /** What the user has to do so that a system shortcut starts Encircle, and which settings page helps. */
 data class ShortcutPlan(
-    val title: String,
-    val howTo: String,
-    val buttonLabel: String,
+    @param:StringRes val title: Int,
+    @param:StringRes val howTo: Int,
+    @param:StringRes val buttonLabel: Int,
     /** Settings actions to try in order; the first one the device knows is opened. */
     val settingsActions: List<String>,
     /** Offered on gesture navigation: switching to buttons gives the classic home long-press. */
@@ -128,53 +130,46 @@ object AssistantSetup {
     internal fun plan(navigation: Navigation, launcher: LauncherFamily): ShortcutPlan = when (navigation) {
         Navigation.Buttons -> when (launcher) {
             LauncherFamily.Pixel -> ShortcutPlan(
-                title = "Home gedrückt halten",
-                howTo = "Schalte unter Navigationsmodus „Circle to Search“ aus. Danach startet langes Drücken auf " +
-                    "die Home-Taste Encircle.",
-                buttonLabel = "Navigationsmodus öffnen",
+                title = R.string.plan_buttons_title,
+                howTo = R.string.plan_buttons_pixel_how,
+                buttonLabel = R.string.plan_pixel_button,
                 settingsActions = listOf(ACTION_NAVIGATION_MODE, ACTION_BUTTON_NAVIGATION),
                 offerButtonNavigation = false,
             )
             LauncherFamily.Samsung -> ShortcutPlan(
-                title = "Home gedrückt halten",
-                howTo = "Schalte unter Einstellungen › Anzeige › Navigationsleiste „Circle to Search“ aus. Danach " +
-                    "startet langes Drücken auf die Home-Taste Encircle.",
-                buttonLabel = "Anzeige-Einstellungen",
+                title = R.string.plan_buttons_title,
+                howTo = R.string.plan_buttons_samsung_how,
+                buttonLabel = R.string.plan_samsung_button,
                 settingsActions = listOf(Settings.ACTION_DISPLAY_SETTINGS),
                 offerButtonNavigation = false,
             )
             LauncherFamily.Aosp -> ShortcutPlan(
-                title = "Home gedrückt halten",
-                howTo = "Halte die Home-Taste kurz gedrückt, dann startet Encircle. Passiert nichts, schalte in den " +
-                    "Tasten-Einstellungen „Home gedrückt halten, um Assistenten aufzurufen“ ein.",
-                buttonLabel = "Tasten-Einstellungen",
+                title = R.string.plan_buttons_title,
+                howTo = R.string.plan_buttons_how,
+                buttonLabel = R.string.plan_buttons_button,
                 settingsActions = listOf(ACTION_BUTTON_NAVIGATION, ACTION_NAVIGATION_MODE),
                 offerButtonNavigation = false,
             )
         }
         Navigation.Gestures -> when (launcher) {
             LauncherFamily.Pixel -> ShortcutPlan(
-                title = "Navigationsleiste gedrückt halten",
-                howTo = "Schalte unter Navigationsmodus „Circle to Search“ aus. Danach startet langes Drücken auf die " +
-                    "Leiste am unteren Rand Encircle. Alternativ wischst du schräg aus einer unteren Ecke nach oben.",
-                buttonLabel = "Navigationsmodus öffnen",
+                title = R.string.plan_handle_title,
+                howTo = R.string.plan_pixel_how,
+                buttonLabel = R.string.plan_pixel_button,
                 settingsActions = listOf(ACTION_NAVIGATION_MODE, ACTION_GESTURE_NAVIGATION),
                 offerButtonNavigation = false,
             )
             LauncherFamily.Samsung -> ShortcutPlan(
-                title = "Navigationsleiste gedrückt halten",
-                howTo = "Schalte unter Einstellungen › Anzeige › Navigationsleiste „Circle to Search“ aus. Danach " +
-                    "startet langes Drücken auf die Leiste Encircle.",
-                buttonLabel = "Anzeige-Einstellungen",
+                title = R.string.plan_handle_title,
+                howTo = R.string.plan_samsung_how,
+                buttonLabel = R.string.plan_samsung_button,
                 settingsActions = listOf(Settings.ACTION_DISPLAY_SETTINGS),
                 offerButtonNavigation = false,
             )
             LauncherFamily.Aosp -> ShortcutPlan(
-                title = "Aus der Ecke wischen",
-                howTo = "Schalte in den Gesten-Einstellungen „Zum Aufrufen des Assistenten wischen“ ein. Danach " +
-                    "startet ein Wisch schräg aus einer unteren Ecke nach oben Encircle. Langes Drücken auf die " +
-                    "Leiste ist auf diesem System für die Google-Suche reserviert.",
-                buttonLabel = "Gesten-Einstellungen",
+                title = R.string.plan_corner_title,
+                howTo = R.string.plan_corner_how,
+                buttonLabel = R.string.plan_corner_button,
                 settingsActions = listOf(ACTION_GESTURE_NAVIGATION, ACTION_NAVIGATION_MODE),
                 offerButtonNavigation = true,
             )

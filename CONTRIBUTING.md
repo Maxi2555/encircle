@@ -125,6 +125,14 @@ Coverage is reported, not enforced. Logic in `analysis/` should stay well covere
 - Encircle must stay offline. Do not add network access, analytics or crash reporting that sends data off the device.
 - Keep the overlay fast: no work on the main thread that scales with screen content, and no noticeable delay before the frozen screen appears.
 
+### Texts and translations
+
+- Every text the user sees lives in `app/src/main/res/values/strings.xml`. English is the default, German is in `values-de/`. Never hardcode UI text in Kotlin.
+- In Compose use `stringResource` / `pluralStringResource`; elsewhere `context.getString` / `resources.getQuantityString`. Counts always go through `<plurals>`, never `if (n == 1)`.
+- When you add or change a string, update German too, or say in the pull request that you need help with it. Lint reports missing translations.
+- Names that are the same in every language (brand, `IBAN`, …) get `translatable="false"` and live only in `values/`.
+- New languages are welcome: copy `values/strings.xml` to `values-<code>/`, translate it, and add the store texts under `fastlane/metadata/android/<locale>/` if you like.
+
 ### Changelog
 
 There is no changelog file to edit. Release notes are generated from the pull request titles, grouped by type and sorted alphabetically, and published with each GitHub release. A clear title is therefore the changelog entry.

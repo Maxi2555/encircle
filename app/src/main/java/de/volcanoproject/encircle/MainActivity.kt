@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.volcanoproject.encircle.actions.SystemActions
@@ -49,7 +50,7 @@ import de.volcanoproject.encircle.ui.SetupSteps
 class MainActivity : ComponentActivity() {
     private var setup by mutableStateOf<SetupStatus?>(null)
     private var onboardingDone by mutableStateOf(true)
-    private var diagnostics by mutableStateOf(emptyList<Pair<String, String>>())
+    private var diagnostics by mutableStateOf(emptyList<Pair<Diagnostics.Key, String>>())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -109,11 +110,7 @@ class MainActivity : ComponentActivity() {
     private fun tryOverlay() {
         if (AssistService.launchOverlay()) return
         refresh()
-        val message = if (setup?.assistant == true) {
-            "Encircle ist noch nicht bereit. Versuche es gleich noch einmal."
-        } else {
-            "Encircle ist nicht mehr als Assistent aktiv"
-        }
+        val message = getString(if (setup?.assistant == true) R.string.try_failed_not_ready else R.string.try_failed_no_assistant)
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 }
@@ -121,7 +118,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun SetupScreen(
     setup: SetupStatus?,
-    diagnostics: List<Pair<String, String>>,
+    diagnostics: List<Pair<Diagnostics.Key, String>>,
     onOpenAssistant: () -> Unit,
     onOpenSettings: (actions: List<String>) -> Unit,
     onTry: () -> Unit,
@@ -137,9 +134,9 @@ private fun SetupScreen(
     ) {
         Spacer(Modifier.height(24.dp))
         LogoRing(Modifier.size(56.dp))
-        Text("Encircle", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Medium)
+        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Medium)
         Text(
-            "Encircle über einen Kurzbefehl starten, dann Text oder Codes auf dem Bildschirm markieren, kopieren und teilen.",
+            stringResource(R.string.home_tagline),
             style = MaterialTheme.typography.bodyLarge,
             color = scheme.onSurfaceVariant,
         )
@@ -147,26 +144,24 @@ private fun SetupScreen(
         setup?.let { SetupSteps(it, onOpenAssistant, onOpenSettings, onTry) }
 
         InfoCard(
-            "Bedienung",
+            stringResource(R.string.home_usage_title),
             listOf(
-                "Auf ein Wort tippen markiert das Wort. Erneut tippen erweitert auf Satz, dann Absatz.",
-                "Lange drücken markiert den ganzen Absatz.",
-                "Über Text wischen markiert wie ein Textmarker, quer über einen Absatz den ganzen Absatz.",
-                "Einkreisen markiert alles im Kreis. Ohne Text wird der Bereich als Bild ausgewählt.",
-                "Die Griffe an der Auswahl verschieben Anfang und Ende.",
-                "Erkannte QR- und Barcodes leuchten auf. Antippen zeigt Inhalt und Aktionen.",
-                "Die Leiste unten lässt sich nach oben schieben, um verdeckte Inhalte zu sehen. Ganz nach oben hinausschieben oder Zurück schließt Encircle.",
-            ),
+                R.string.home_usage_1,
+                R.string.home_usage_2,
+                R.string.home_usage_3,
+                R.string.home_usage_4,
+                R.string.home_usage_5,
+                R.string.home_usage_6,
+                R.string.home_usage_7,
+            ).map { stringResource(it) },
         )
 
         Card(shape = MaterialTheme.shapes.extraLarge) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Zum Testen", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.home_try_title), style = MaterialTheme.typography.titleMedium)
                 SelectionContainer {
                     Text(
-                        "Encircle läuft komplett auf dem Gerät. Es sucht nichts im Netz und schickt keine Daten weg. " +
-                            "Probier es an diesem Absatz aus: Tippe auf ein Wort, wische quer darüber oder kreise ihn ein. " +
-                            "Links wie https://example.org und Adressen wie hallo@example.org werden erkannt.",
+                        stringResource(R.string.home_try_text),
                         style = MaterialTheme.typography.bodyLarge,
                     )
                 }
@@ -179,12 +174,12 @@ private fun SetupScreen(
                 colors = CardDefaults.cardColors(containerColor = scheme.surfaceContainer),
             ) {
                 Column(Modifier.padding(20.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Letzter Aufruf", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.home_diagnostics_title), style = MaterialTheme.typography.titleMedium)
                     SelectionContainer {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             diagnostics.forEach { (k, v) ->
                                 Row {
-                                    Text(k, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, modifier = Modifier.width(120.dp))
+                                    Text(stringResource(k.label), style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, modifier = Modifier.width(120.dp))
                                     Text(v, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                                 }
                             }
@@ -195,9 +190,7 @@ private fun SetupScreen(
         }
 
         Text(
-            "Encircle ist freie Software unter der Apache-Lizenz 2.0, Quellcode: github.com/Maxi2555/encircle. " +
-                "Barcodes: zxing-cpp (Apache-2.0). Texterkennung: Google ML Kit (proprietär, offline auf dem Gerät). " +
-                "Icons: Material Design Icons (Apache-2.0).",
+            stringResource(R.string.home_licenses),
             style = MaterialTheme.typography.bodySmall,
             color = scheme.onSurfaceVariant,
         )
