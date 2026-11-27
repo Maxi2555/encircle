@@ -15,7 +15,6 @@ import kotlin.math.min
 
 /** Shape analysis of a finger stroke, used to tell a lasso from a highlight swipe. */
 internal class StrokeShape(points: List<Offset>, unit: Float) {
-    val bounds: Rect
     val length: Float
     val isLasso: Boolean
 
@@ -27,7 +26,7 @@ internal class StrokeShape(points: List<Offset>, unit: Float) {
             l = min(l, p.x); t = min(t, p.y); r = max(r, p.x); b = max(b, p.y)
             if (i > 0) len += (p - points[i - 1]).getDistance()
         }
-        bounds = if (points.isEmpty()) Rect.Zero else Rect(l, t, r, b)
+        val bounds = if (points.isEmpty()) Rect.Zero else Rect(l, t, r, b)
         length = len
 
         val w = bounds.width

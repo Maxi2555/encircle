@@ -96,7 +96,6 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.AwaitPointerEventScope
@@ -347,11 +346,6 @@ private fun ScreenLayer(c: OverlayController, img: ImageBitmap, appear: () -> Fl
                     clipPath(p) { drawImage(img) }
                     drawSheen(p, p.getBounds(), sheen.value)
                 }
-                is Selection.Region -> {
-                    val r = selection.rect
-                    clipRect(r.left, r.top, r.right, r.bottom) { drawImage(img) }
-                    drawBrackets(r, u, glow, si)
-                }
                 Selection.None -> Unit
             }
 
@@ -585,27 +579,6 @@ private fun selectionPath(c: OverlayController): Path? {
         i = j + 1
     }
     return path
-}
-
-private fun DrawScope.drawBrackets(r: Rect, u: Float, glow: GlowPalette, t: Float) {
-    val out = (1f - t) * 14f * u
-    val len = minOf(28f * u, r.width / 3f, r.height / 3f)
-    val brush = Brush.linearGradient(glow.colors, r.topLeft, r.bottomRight)
-    val corners = listOf(
-        Triple(r.topLeft, 1f, 1f), Triple(r.topRight, -1f, 1f),
-        Triple(r.bottomLeft, 1f, -1f), Triple(r.bottomRight, -1f, -1f),
-    )
-    for ((p0, dx, dy) in corners) {
-        val p = p0 + Offset(-dx * out, -dy * out)
-        val path = Path().apply {
-            moveTo(p.x + dx * len, p.y)
-            lineTo(p.x, p.y)
-            lineTo(p.x, p.y + dy * len)
-        }
-        drawPath(path, brush, alpha = 0.5f, style = Stroke(width = 10f * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        drawPath(path, Color.White, style = Stroke(width = 4f * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
-    }
-    drawRect(brush, r.topLeft, r.size, alpha = 0.8f, style = Stroke(width = 1.5f * u))
 }
 
 /** Teardrop selection handle; the pointed corner touches the text. */
@@ -1011,7 +984,7 @@ private fun barTexts(c: OverlayController): Pair<String, String> {
                 c.codes.size > 1 -> "${c.codes.size} Codes erkannt · Tippe einen an oder markiere Text"
                 c.entities.isNotEmpty() -> entitySummary(c.entities) + " erkannt · Unterstrichenes antippen"
                 !c.layout.isEmpty -> "Tippe auf ein Wort, markiere Text oder kreise etwas ein"
-                else -> "Kein Text erkannt · Kreise einen Bereich ein"
+                else -> "Kein Text erkannt"
             }
             is Selection.Words -> c.selectedEntity()?.let { e -> entityTitle(e.kind) to entityDisplay(e) } ?: run {
                 val n = s.ids.size
@@ -1019,7 +992,6 @@ private fun barTexts(c: OverlayController): Pair<String, String> {
                     c.layout.textOf(s.ids).replace('\n', ' ').take(400)
             }
             is Selection.Code -> "${s.code.formatName} · ${typeName(s.code.content)}" to describe(s.code)
-            is Selection.Region -> "Bereich" to "Ausschnitt als Bild teilen oder kopieren"
         }
     }
     return (c.feedback ?: pair.first) to pair.second

@@ -125,11 +125,6 @@ object SystemActions {
         return launch(context, Intent.createChooser(send, null).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
     }
 
-    fun copyImage(context: Context, uri: Uri) {
-        context.getSystemService(ClipboardManager::class.java)
-            .setPrimaryClip(ClipData.newUri(context.contentResolver, "Bild", uri))
-    }
-
     fun pruneShared(context: Context) {
         val cutoff = System.currentTimeMillis() - SHARED_MAX_AGE_MS
         File(context.cacheDir, SHARED_DIR).listFiles()?.filter { it.lastModified() < cutoff }?.forEach { it.delete() }
