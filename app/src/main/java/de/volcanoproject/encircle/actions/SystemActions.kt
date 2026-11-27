@@ -79,6 +79,7 @@ object SystemActions {
             e.description?.let { putExtra(CalendarContract.Events.DESCRIPTION, it) }
             e.start?.let { putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, it) }
             e.end?.let { putExtra(CalendarContract.EXTRA_EVENT_END_TIME, it) }
+            putExtra(CalendarContract.EXTRA_EVENT_ALL_DAY, e.allDay)
         },
     )
 
