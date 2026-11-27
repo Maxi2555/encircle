@@ -19,7 +19,6 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -93,16 +92,20 @@ fun glowPaletteFor(argb: Int, dark: Boolean): GlowPalette {
 @Composable
 fun LogoRing(modifier: Modifier = Modifier, busy: Boolean = false) {
     val glow = rememberGlowPalette()
-    val spin by rememberInfiniteTransition(label = "logo").animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Restart),
-        label = "spin",
-    )
+    val spin = if (busy) {
+        rememberInfiniteTransition(label = "logo").animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Restart),
+            label = "spin",
+        )
+    } else {
+        null
+    }
     Canvas(modifier) {
         val stroke = size.minDimension * 0.13f
         val brush = Brush.sweepGradient(glow.loop)
-        rotate(if (busy) spin else -60f) {
+        rotate(spin?.value ?: -60f) {
             drawArc(
                 brush = brush,
                 startAngle = 20f,
