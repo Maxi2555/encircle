@@ -63,7 +63,7 @@ class MainActivity : ComponentActivity() {
                         onOpenSettings = { SystemActions.openAssistSettings(this) },
                         onTry = {
                             if (!AssistService.launchOverlay()) {
-                                Toast.makeText(this, "Assistent ist nicht verbunden", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this, "ENCIRCLE kann nicht starten", Toast.LENGTH_SHORT).show()
                             }
                         },
                     )
