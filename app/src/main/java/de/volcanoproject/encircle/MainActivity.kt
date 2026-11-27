@@ -7,6 +7,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -40,25 +42,45 @@ import de.volcanoproject.encircle.setup.AssistantSetup
 import de.volcanoproject.encircle.setup.SetupStatus
 import de.volcanoproject.encircle.ui.EncircleTheme
 import de.volcanoproject.encircle.ui.LogoRing
+import de.volcanoproject.encircle.ui.Onboarding
 import de.volcanoproject.encircle.ui.SetupSteps
 
 class MainActivity : ComponentActivity() {
     private var setup by mutableStateOf<SetupStatus?>(null)
+    private var onboardingDone by mutableStateOf(true)
     private var diagnostics by mutableStateOf(emptyList<Pair<String, String>>())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        onboardingDone = AssistantSetup.onboardingDone(this)
+        setup = AssistantSetup.status(this)
         setContent {
             EncircleTheme {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
-                    SetupScreen(
-                        setup = setup,
-                        diagnostics = diagnostics,
-                        onOpenAssistant = { SystemActions.openAssistSettings(this) },
-                        onOpenSettings = { SystemActions.openSettings(this, it) },
-                        onTry = { AssistService.launchOverlay() },
-                    )
+                    // First start: the full-screen tutorial, then the start page.
+                    Crossfade(targetState = onboardingDone, animationSpec = tween(450), label = "onboarding") { done ->
+                        if (!done) {
+                            setup?.let { status ->
+                                Onboarding(
+                                    status = status,
+                                    onOpenAssistant = { SystemActions.openAssistSettings(this) },
+                                    onFinish = {
+                                        AssistantSetup.markOnboardingDone(this)
+                                        onboardingDone = true
+                                    },
+                                )
+                            }
+                        } else {
+                            SetupScreen(
+                                setup = setup,
+                                diagnostics = diagnostics,
+                                onOpenAssistant = { SystemActions.openAssistSettings(this) },
+                                onOpenSettings = { SystemActions.openSettings(this, it) },
+                                onTry = { AssistService.launchOverlay() },
+                            )
+                        }
+                    }
                 }
             }
         }
