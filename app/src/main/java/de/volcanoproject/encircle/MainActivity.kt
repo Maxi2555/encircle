@@ -4,6 +4,7 @@
 package de.volcanoproject.encircle
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -77,7 +78,7 @@ class MainActivity : ComponentActivity() {
                                 diagnostics = diagnostics,
                                 onOpenAssistant = { SystemActions.openAssistSettings(this) },
                                 onOpenSettings = { SystemActions.openSettings(this, it) },
-                                onTry = { AssistService.launchOverlay() },
+                                onTry = ::tryOverlay,
                             )
                         }
                     }
@@ -99,6 +100,21 @@ class MainActivity : ComponentActivity() {
     private fun refresh() {
         setup = AssistantSetup.status(this)
         diagnostics = Diagnostics.read(this)
+    }
+
+    /**
+     * Opens the overlay. If that fails, the status shown is out of date: refreshing it lets the card say
+     * what to do, unless Encircle is still the assistant and Android just has not connected it yet.
+     */
+    private fun tryOverlay() {
+        if (AssistService.launchOverlay()) return
+        refresh()
+        val message = if (setup?.assistant == true) {
+            "Encircle ist noch nicht bereit. Versuche es gleich noch einmal."
+        } else {
+            "Encircle ist nicht mehr als Assistent aktiv"
+        }
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 }
 
