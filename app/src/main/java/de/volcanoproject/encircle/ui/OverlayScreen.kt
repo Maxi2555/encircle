@@ -98,7 +98,6 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -334,7 +333,6 @@ private fun ScreenLayer(
     val codeTone = remember(c.codes, scheme) { c.codes.associate { it.id to toneAround(it.corners, CODE_PAD) } }
     val entityTone = remember(c.entities, scheme) { c.entities.map { toneAround(it.bounds.outline(), MARK_MARGIN) } }
     val selectionTone = remember(selectionPath, scheme) { selectionPath?.let { toneAround(it.getBounds().outline(), MARK_MARGIN) } ?: darkTone }
-    val regionTone = remember(selection, scheme) { (selection as? Selection.Region)?.let { toneAround(it.rect.outline(), MARK_MARGIN) } ?: darkTone }
     // Derived, so the layer recomposes when a stroke starts, not on every point of it.
     val trailStart by remember { derivedStateOf { c.trail.firstOrNull() } }
     val trailTone = remember(trailStart, scheme) { trailStart?.let { toneAround(Rect(it, 1f).outline(), TRAIL_MARGIN) } ?: darkTone }
@@ -360,12 +358,6 @@ private fun ScreenLayer(
                     drawPath(p, selectionTone, alpha = 0.3f * sa)
                 }
                 is Selection.Code -> clipPath(codeLayer(selection.code, u, CODE_PAD, CODE_RADIUS + CODE_RADIUS_GROW * focus.value)) { drawImage(img) }
-                is Selection.Region -> {
-                    val r = selection.rect
-                    clipRect(r.left, r.top, r.right, r.bottom) { drawImage(img) }
-                    drawRect(regionTone, r.topLeft, r.size, alpha = 0.08f * sa)
-                    drawRect(regionTone, r.topLeft, r.size, alpha = sa, style = Stroke(width = 2f * u))
-                }
                 Selection.None -> Unit
             }
 
@@ -972,7 +964,7 @@ private fun barTexts(c: OverlayController): Pair<String, String> {
                 c.codes.size > 1 -> "${c.codes.size} Codes erkannt" to "Einen antippen oder Text markieren"
                 c.entities.isNotEmpty() -> entitySummary(c.entities) + " erkannt" to "Unterstrichenes antippen"
                 !c.layout.isEmpty -> "Text erkannt" to "Antippen, markieren oder einkreisen"
-                else -> "Kein Text erkannt" to "Einen Bereich einkreisen"
+                else -> "Kein Text erkannt" to "Der Screenshot lässt sich trotzdem teilen"
             }
             is Selection.Words -> c.selectedEntity()?.let { e -> entityTitle(e.kind) to entityDisplay(e) } ?: run {
                 val n = s.ids.size
@@ -980,7 +972,6 @@ private fun barTexts(c: OverlayController): Pair<String, String> {
                     c.layout.textOf(s.ids).replace('\n', ' ')
             }
             is Selection.Code -> "${s.code.formatName} · ${typeName(s.code.content)}" to describe(s.code)
-            is Selection.Region -> "Bereich" to "Ausschnitt als Bild teilen oder kopieren"
         }
     }
     return (c.feedback ?: pair.first) to pair.second
