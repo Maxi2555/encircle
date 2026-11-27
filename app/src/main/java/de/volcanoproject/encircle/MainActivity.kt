@@ -22,11 +22,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,19 +31,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.volcanoproject.encircle.actions.SystemActions
 import de.volcanoproject.encircle.assist.AssistService
+import de.volcanoproject.encircle.setup.AssistantSetup
+import de.volcanoproject.encircle.setup.SetupStatus
 import de.volcanoproject.encircle.ui.EncircleTheme
 import de.volcanoproject.encircle.ui.LogoRing
+import de.volcanoproject.encircle.ui.SetupSteps
 
 class MainActivity : ComponentActivity() {
-    private var isAssistant by mutableStateOf(false)
-    private var isDisconnected by mutableStateOf(false)
+    private var setup by mutableStateOf<SetupStatus?>(null)
     private var diagnostics by mutableStateOf(emptyList<Pair<String, String>>())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,10 +53,10 @@ class MainActivity : ComponentActivity() {
             EncircleTheme {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
                     SetupScreen(
-                        isAssistant = isAssistant,
-                        isDisconnected = isDisconnected,
+                        setup = setup,
                         diagnostics = diagnostics,
-                        onOpenSettings = { SystemActions.openAssistSettings(this) },
+                        onOpenAssistant = { SystemActions.openAssistSettings(this) },
+                        onOpenSettings = { SystemActions.openSettings(this, it) },
                         onTry = { AssistService.launchOverlay() },
                     )
                 }
@@ -69,18 +66,26 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        isAssistant = AssistService.isActive(this)
-        isDisconnected = AssistService.isRoleHeldButDisconnected(this)
+        refresh()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) refresh()
+    }
+
+    private fun refresh() {
+        setup = AssistantSetup.status(this)
         diagnostics = Diagnostics.read(this)
     }
 }
 
 @Composable
 private fun SetupScreen(
-    isAssistant: Boolean,
-    isDisconnected: Boolean,
+    setup: SetupStatus?,
     diagnostics: List<Pair<String, String>>,
-    onOpenSettings: () -> Unit,
+    onOpenAssistant: () -> Unit,
+    onOpenSettings: (actions: List<String>) -> Unit,
     onTry: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -96,73 +101,12 @@ private fun SetupScreen(
         LogoRing(Modifier.size(56.dp))
         Text("Encircle", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Medium)
         Text(
-            "Home-Taste oder Navigationsleiste gedrückt halten, dann Text oder Codes auf dem Bildschirm markieren, kopieren und teilen.",
+            "Encircle über einen Kurzbefehl starten, dann Text oder Codes auf dem Bildschirm markieren, kopieren und teilen.",
             style = MaterialTheme.typography.bodyLarge,
             color = scheme.onSurfaceVariant,
         )
 
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = if (isAssistant) scheme.primaryContainer else scheme.tertiaryContainer,
-            ),
-            shape = MaterialTheme.shapes.extraLarge,
-        ) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        painterResource(if (isAssistant) R.drawable.ic_check else R.drawable.ic_settings),
-                        null,
-                        Modifier.size(24.dp),
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        when {
-                            isAssistant -> "Bereit"
-                            isDisconnected -> "Neu verbinden"
-                            else -> "Noch nicht eingerichtet"
-                        },
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                }
-                Text(
-                    if (isAssistant) {
-                        "Encircle ist dein digitaler Assistent. Halte Home oder die Navigationsleiste gedrückt."
-                    } else if (isDisconnected) {
-                        "Encircle ist als Assistent gewählt, aber Android hat es nach einem Neustart abgemeldet. " +
-                            "Wähle in den Einstellungen kurz „Keine“ und dann wieder Encircle."
-                    } else {
-                        "Wähle Encircle als App für den digitalen Assistenten. Nur so startet Android die App per langem Druck auf Home."
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (isAssistant) {
-                        Button(onClick = onTry) {
-                            Icon(painterResource(R.drawable.ic_play), null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Ausprobieren")
-                        }
-                        FilledTonalButton(onClick = onOpenSettings) { Text("Einstellungen") }
-                    } else {
-                        Button(onClick = onOpenSettings) {
-                            Text(if (isDisconnected) "Einstellungen öffnen" else "Assistent auswählen")
-                        }
-                    }
-                }
-            }
-        }
-
-        InfoCard(
-            "Einrichtung",
-            listOf(
-                "In den Einstellungen unter Standard-Apps › Digitaler Assistent Encircle wählen.",
-                "Dort „Bildschirm- und App-Daten verwenden“ einschalten, je nach System auch „Screenshot verwenden“.",
-                "Drei-Tasten-Navigation: Home gedrückt halten startet Encircle.",
-                "Gestennavigation auf GrapheneOS und anderen AOSP-Systemen: Unter System › Navigationsmodus › Zahnrad das Wischen zum Aufrufen des Assistenten einschalten. Dann startet ein Wisch schräg nach oben aus einer unteren Ecke Encircle.",
-                "Pixel mit Google-Launcher: Circle to Search unter System › Navigationsmodus ausschalten, dann startet langes Drücken auf die Leiste Encircle.",
-                "Samsung: Circle to Search unter Anzeige › Navigationsleiste ausschalten.",
-            ),
-        )
+        setup?.let { SetupSteps(it, onOpenAssistant, onOpenSettings, onTry) }
 
         InfoCard(
             "Bedienung",

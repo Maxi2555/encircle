@@ -106,6 +106,10 @@ object SystemActions {
 
     fun openWifiSettings(context: Context): Boolean = launch(context, Intent(Settings.ACTION_WIFI_SETTINGS))
 
+    /** Opens the first settings page this device knows, falling back to the main settings screen. */
+    fun openSettings(context: Context, actions: List<String>): Boolean =
+        actions.any { launch(context, Intent(it)) } || launch(context, Intent(Settings.ACTION_SETTINGS))
+
     fun openAssistSettings(context: Context): Boolean =
         launch(context, Intent(Settings.ACTION_VOICE_INPUT_SETTINGS)) ||
             launch(context, Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
