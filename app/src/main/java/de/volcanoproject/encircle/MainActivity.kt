@@ -78,7 +78,7 @@ class MainActivity : ComponentActivity() {
                                 diagnostics = diagnostics,
                                 onOpenAssistant = { SystemActions.openAssistSettings(this) },
                                 onOpenSettings = { SystemActions.openSettings(this, it) },
-                                onTry = { AssistService.launchOverlay() },
+                                onTry = ::tryOverlay,
                             )
                         }
                     }
@@ -99,8 +99,6 @@ class MainActivity : ComponentActivity() {
 
     private fun refresh() {
         setup = AssistantSetup.status(this)
-        isAssistant = AssistService.isActive(this)
-        isDisconnected = AssistService.isRoleHeldButDisconnected(this)
         diagnostics = Diagnostics.read(this)
     }
 
@@ -110,8 +108,8 @@ class MainActivity : ComponentActivity() {
      */
     private fun tryOverlay() {
         if (AssistService.launchOverlay()) return
-        refreshStatus()
-        val message = if (isAssistant) {
+        refresh()
+        val message = if (setup?.assistant == true) {
             "Encircle ist noch nicht bereit. Versuche es gleich noch einmal."
         } else {
             "Encircle ist nicht mehr als Assistent aktiv"
