@@ -333,7 +333,6 @@ private fun ScreenLayer(
     val codeTone = remember(c.codes, scheme) { c.codes.associate { it.id to toneAround(it.corners, CODE_PAD) } }
     val entityTone = remember(c.entities, scheme) { c.entities.map { toneAround(it.bounds.outline(), MARK_MARGIN) } }
     val selectionTone = remember(selectionPath, scheme) { selectionPath?.let { toneAround(it.getBounds().outline(), MARK_MARGIN) } ?: darkTone }
-    val regionTone = remember(selection, scheme) { (selection as? Selection.Region)?.let { toneAround(it.rect.outline(), MARK_MARGIN) } ?: darkTone }
     // Derived, so the layer recomposes when a stroke starts, not on every point of it.
     val trailStart by remember { derivedStateOf { c.trail.firstOrNull() } }
     val trailTone = remember(trailStart, scheme) { trailStart?.let { toneAround(Rect(it, 1f).outline(), TRAIL_MARGIN) } ?: darkTone }
@@ -960,12 +959,12 @@ private fun barTexts(c: OverlayController): Pair<String, String> {
         c.screenshotMissing -> "Kein Bildschirminhalt" to "Erlaube dem Assistenten, Screenshots zu verwenden."
         else -> when (val s = c.selection) {
             Selection.None -> when {
-                c.analyzing -> "Bildschirm wird gelesen …"
+                c.analyzing -> "Bildschirm wird gelesen" to "Einkreisen geht schon jetzt"
                 c.codes.size == 1 -> "1 Code erkannt" to "Antippen oder Text markieren"
                 c.codes.size > 1 -> "${c.codes.size} Codes erkannt" to "Einen antippen oder Text markieren"
                 c.entities.isNotEmpty() -> entitySummary(c.entities) + " erkannt" to "Unterstrichenes antippen"
                 !c.layout.isEmpty -> "Text erkannt" to "Antippen, markieren oder einkreisen"
-                else -> "Kein Text erkannt" to "Einen Bereich einkreisen"
+                else -> "Kein Text erkannt" to "Der Screenshot lässt sich trotzdem teilen"
             }
             is Selection.Words -> c.selectedEntity()?.let { e -> entityTitle(e.kind) to entityDisplay(e) } ?: run {
                 val n = s.ids.size
