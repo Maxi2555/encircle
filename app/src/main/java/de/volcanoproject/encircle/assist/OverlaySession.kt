@@ -20,6 +20,7 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import de.volcanoproject.encircle.setup.AssistantSetup
 import de.volcanoproject.encircle.ui.EncircleTheme
 import de.volcanoproject.encircle.ui.OverlayController
 import de.volcanoproject.encircle.ui.OverlayScreen
@@ -97,6 +98,9 @@ class OverlaySession(context: Context) : VoiceInteractionSession(context) {
     override fun onShow(args: Bundle?, showFlags: Int) {
         super.onShow(args, showFlags)
         controller.begin(showFlags, screenshotExpected = showFlags and SHOW_WITH_SCREENSHOT != 0)
+        // Started by the system shortcut (home long-press, handle, corner swipe), not by the app's own
+        // "try it" button: the setup screen can tick off the shortcut step.
+        if (showFlags and SHOW_SOURCE_ASSIST_GESTURE != 0) AssistantSetup.markShortcutUsed(context)
     }
 
     override fun onHandleScreenshot(screenshot: Bitmap?) {

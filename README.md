@@ -52,6 +52,8 @@ Both are signed with the same key, so you can switch between them without reinst
 
 ## Set up
 
+Open Encircle: the start screen walks you through three steps, ticks each one off as soon as it is done, and opens the right settings page for your device. In short:
+
 1. Open Encircle and tap **Assistent auswählen** (choose assistant). Pick Encircle as the digital assistant app.
 2. In the same settings, enable **Use screen content** and, where offered, **Use screenshot**.
 3. Choose how to invoke it:
