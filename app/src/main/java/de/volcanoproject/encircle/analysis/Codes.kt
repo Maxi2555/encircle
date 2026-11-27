@@ -111,22 +111,19 @@ object CodeParser {
         val rest = t.substring(7)
         val to = Uri.decode(rest.substringBefore('?'))
         val query = rest.substringAfter('?', "")
-        fun param(name: String) = query.split('&')
-            .firstOrNull { it.substringBefore('=').equals(name, ignoreCase = true) }
-            ?.substringAfter('=')?.let(Uri::decode)
-        return CodeContent.Email(to, param("subject"), param("body"))
+        return CodeContent.Email(to, queryParam(query, "subject"), queryParam(query, "body"))
     }
 
     private fun parseSms(t: String): CodeContent {
         val rest = t.substringAfter(':')
-        val number = rest.substringBefore(':').substringBefore('?')
-        val body = when {
-            rest.contains(':') -> rest.substringAfter(':')
-            rest.contains("body=") -> Uri.decode(rest.substringAfter("body="))
-            else -> null
-        }
-        return CodeContent.Sms(number, body)
+        val query = if (t.startsWith("SMSTO:", ignoreCase = true)) "" else rest.substringAfter('?', "")
+        if (query.isEmpty()) return CodeContent.Sms(rest.substringBefore(':'), rest.substringAfter(':', "").ifEmpty { null })
+        return CodeContent.Sms(rest.substringBefore('?'), queryParam(query, "body"))
     }
+
+    private fun queryParam(query: String, name: String): String? = query.split('&')
+        .firstOrNull { it.substringBefore('=').equals(name, ignoreCase = true) }
+        ?.substringAfter('=')?.let(Uri::decode)
 
     private fun vcardName(v: String): String? {
         val lines = v.lines()
@@ -136,19 +133,26 @@ object CodeParser {
             ?.substringAfter(':')?.split(';')?.take(2)?.filter { it.isNotBlank() }?.reversed()?.joinToString(" ")
     }
 
+    private val LINE_BREAK = Regex("\r\n|\r|\n")
+
+    private fun vcardText(v: String) =
+        v.replace("\\", "\\\\").replace(LINE_BREAK) { "\\n" }.replace(",", "\\,").replace(";", "\\;")
+
+    private fun oneLine(v: String) = v.replace(LINE_BREAK, "")
+
     private fun mecardToVcard(t: String): CodeContent {
         val f = fields(t.substringAfter(':'))
         val nameParts = f["N"].orEmpty().split(',').map { it.trim() }
         val display = nameParts.reversed().filter { it.isNotEmpty() }.joinToString(" ")
         val sb = StringBuilder("BEGIN:VCARD\r\nVERSION:3.0\r\n")
-        sb.append("N:").append(nameParts.getOrElse(0) { "" }).append(';').append(nameParts.getOrElse(1) { "" }).append("\r\n")
-        if (display.isNotEmpty()) sb.append("FN:").append(display).append("\r\n")
-        f["TEL"]?.let { sb.append("TEL:").append(it).append("\r\n") }
-        f["EMAIL"]?.let { sb.append("EMAIL:").append(it).append("\r\n") }
-        f["ADR"]?.let { sb.append("ADR:;;").append(it).append("\r\n") }
-        f["URL"]?.let { sb.append("URL:").append(it).append("\r\n") }
-        f["ORG"]?.let { sb.append("ORG:").append(it).append("\r\n") }
-        f["NOTE"]?.let { sb.append("NOTE:").append(it).append("\r\n") }
+        sb.append("N:").append(vcardText(nameParts.getOrElse(0) { "" })).append(';').append(vcardText(nameParts.getOrElse(1) { "" })).append("\r\n")
+        if (display.isNotEmpty()) sb.append("FN:").append(vcardText(display)).append("\r\n")
+        f["TEL"]?.let { sb.append("TEL:").append(oneLine(it)).append("\r\n") }
+        f["EMAIL"]?.let { sb.append("EMAIL:").append(oneLine(it)).append("\r\n") }
+        f["ADR"]?.let { sb.append("ADR:;;").append(vcardText(it)).append("\r\n") }
+        f["URL"]?.let { sb.append("URL:").append(oneLine(it)).append("\r\n") }
+        f["ORG"]?.let { sb.append("ORG:").append(vcardText(it)).append("\r\n") }
+        f["NOTE"]?.let { sb.append("NOTE:").append(vcardText(it)).append("\r\n") }
         sb.append("END:VCARD\r\n")
         return CodeContent.Contact(sb.toString(), display.ifEmpty { null })
     }
