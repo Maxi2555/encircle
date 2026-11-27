@@ -41,9 +41,9 @@ import de.volcanoproject.encircle.assist.AssistService
 import de.volcanoproject.encircle.setup.AssistantSetup
 import de.volcanoproject.encircle.setup.SetupStatus
 import de.volcanoproject.encircle.ui.EncircleTheme
+import de.volcanoproject.encircle.ui.LogoRing
 import de.volcanoproject.encircle.ui.Onboarding
 import de.volcanoproject.encircle.ui.SetupSteps
-import de.volcanoproject.encircle.ui.LogoRing
 
 class MainActivity : ComponentActivity() {
     private var setup by mutableStateOf<SetupStatus?>(null)
@@ -75,7 +75,8 @@ class MainActivity : ComponentActivity() {
                             SetupScreen(
                                 setup = setup,
                                 diagnostics = diagnostics,
-                                onOpenSettings = { SystemActions.openAssistSettings(this) },
+                                onOpenAssistant = { SystemActions.openAssistSettings(this) },
+                                onOpenSettings = { SystemActions.openSettings(this, it) },
                                 onTry = { AssistService.launchOverlay() },
                             )
                         }
@@ -85,16 +86,17 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        // Trying the shortcut on this screen opens the overlay on top without pausing the activity;
-        // focus comes back when it closes, so the shortcut step ticks off right away.
-        if (hasFocus) setup = AssistantSetup.status(this)
-    }
-
     override fun onResume() {
         super.onResume()
-        // Re-read on every return from the settings, so finished steps tick off immediately.
+        refresh()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) refresh()
+    }
+
+    private fun refresh() {
         setup = AssistantSetup.status(this)
         diagnostics = Diagnostics.read(this)
     }
@@ -104,7 +106,8 @@ class MainActivity : ComponentActivity() {
 private fun SetupScreen(
     setup: SetupStatus?,
     diagnostics: List<Pair<String, String>>,
-    onOpenSettings: () -> Unit,
+    onOpenAssistant: () -> Unit,
+    onOpenSettings: (actions: List<String>) -> Unit,
     onTry: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -125,7 +128,7 @@ private fun SetupScreen(
             color = scheme.onSurfaceVariant,
         )
 
-        setup?.let { SetupSteps(it, onOpenAssistant = onOpenSettings, onTry = onTry) }
+        setup?.let { SetupSteps(it, onOpenAssistant, onOpenSettings, onTry) }
 
         InfoCard(
             "Bedienung",

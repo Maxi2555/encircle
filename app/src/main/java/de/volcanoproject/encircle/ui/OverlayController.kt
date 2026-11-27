@@ -17,9 +17,9 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.get
 import de.volcanoproject.encircle.R
 import de.volcanoproject.encircle.actions.SystemActions
 import de.volcanoproject.encircle.analysis.CodeContent
@@ -58,7 +58,6 @@ sealed interface Selection {
     }
 
     class Code(val code: DetectedCode, val touch: Offset? = null) : Selection
-    class Region(val rect: Rect) : Selection
 }
 
 enum class Handle { Start, End }
@@ -226,10 +225,7 @@ class OverlayController(private val context: Context, private val finish: () -> 
         codeAt(p)?.let { selectCode(it, p); return }
         val w = layout.wordAt(p, dp(10f))
         if (w == null) {
-            if (selection != Selection.None) {
-                selection = Selection.None
-                haptics(HapticFeedbackConstants.CLOCK_TICK)
-            }
+            dismissSelection()
             return
         }
         val cur = selection
@@ -291,7 +287,7 @@ class OverlayController(private val context: Context, private val finish: () -> 
         if (pts.size < 2) return
         val shape = StrokeShape(pts, density / scale)
         if (shape.isLasso) {
-            lassoSelect(pts, shape.bounds)
+            lassoSelect(pts)
             return
         }
         val s = pts.first()
@@ -317,7 +313,7 @@ class OverlayController(private val context: Context, private val finish: () -> 
         }
     }
 
-    private fun lassoSelect(poly: List<Offset>, bounds: Rect) {
+    private fun lassoSelect(poly: List<Offset>) {
         val words = layout.words.filter { pointInPolygon(it.box.center, poly) }.map { it.index }
         val codesInside = codes.filter { pointInPolygon(it.center, poly) }
         when {
@@ -327,18 +323,15 @@ class OverlayController(private val context: Context, private val finish: () -> 
                 haptics(gestureEnd())
             }
             codesInside.isNotEmpty() -> selectCode(codesInside.first())
-            else -> {
-                val img = image ?: return
-                val r = Rect(
-                    max(0f, bounds.left), max(0f, bounds.top),
-                    min(img.width.toFloat(), bounds.right), min(img.height.toFloat(), bounds.bottom),
-                )
-                if (r.width > dp(24f) && r.height > dp(24f)) {
-                    selection = Selection.Region(r)
-                    haptics(gestureEnd())
-                }
-            }
+            else -> dismissSelection()
         }
+    }
+
+    /** Clears the selection after a gesture that hit nothing, with a tick when there was one. */
+    private fun dismissSelection() {
+        if (selection == Selection.None) return
+        selection = Selection.None
+        haptics(HapticFeedbackConstants.CLOCK_TICK)
     }
 
     private fun wordsAlong(pts: List<Offset>, tolerance: Float): List<Int> {
@@ -430,7 +423,7 @@ class OverlayController(private val context: Context, private val finish: () -> 
             val a = ring[f.toInt() % ring.size]
             val b = ring[(f.toInt() + 1) % ring.size]
             val p = a + (b - a) * (f - f.toInt())
-            val argb = bmp.getPixel(p.x.roundToInt().coerceIn(0, bmp.width - 1), p.y.roundToInt().coerceIn(0, bmp.height - 1))
+            val argb = bmp[p.x.roundToInt().coerceIn(0, bmp.width - 1), p.y.roundToInt().coerceIn(0, bmp.height - 1)]
             light += (0.2126f * ((argb shr 16) and 255) + 0.7152f * ((argb shr 8) and 255) + 0.0722f * (argb and 255)) / 255f
         }
         return light / samples > 0.5f
@@ -494,7 +487,6 @@ class OverlayController(private val context: Context, private val finish: () -> 
         Selection.None -> idleActions()
         is Selection.Words -> textActions(layout.textOf(s.ids), allSelected = s.ids.size == layout.words.size)
         is Selection.Code -> codeActions(s.code)
-        is Selection.Region -> regionActions(s.rect)
     }
 
     /** Offered once the whole screen has been read, so the buttons appear together instead of one by one. */
@@ -504,7 +496,7 @@ class OverlayController(private val context: Context, private val finish: () -> 
             add(OverlayAction(c.formatName + " anzeigen", R.drawable.ic_qr, primary = true) { selectCode(c) })
         }
         if (!layout.isEmpty) add(OverlayAction("Gesamten Text", R.drawable.ic_select_all, primary = isEmpty()) { selectAllText() })
-        if (image != null) add(OverlayAction("Screenshot teilen", R.drawable.ic_image) { shareImage(null) })
+        if (image != null) add(OverlayAction("Screenshot teilen", R.drawable.ic_image) { shareScreenshot() })
     }
 
     private fun textActions(text: String, allSelected: Boolean): List<OverlayAction> = buildList {
@@ -604,11 +596,6 @@ class OverlayController(private val context: Context, private val finish: () -> 
         add(OverlayAction("Teilen", R.drawable.ic_share) { launchExternal { SystemActions.shareText(context, c.raw) } })
     }
 
-    private fun regionActions(r: Rect): List<OverlayAction> = listOf(
-        OverlayAction("Bild teilen", R.drawable.ic_share, true) { shareImage(r) },
-        OverlayAction("Bild kopieren", R.drawable.ic_image) { copyImage(r) },
-    )
-
     private fun copy(text: String, sensitive: Boolean = false) {
         SystemActions.copyText(context, text, sensitive = sensitive)
         showFeedback("In die Zwischenablage kopiert")
@@ -620,30 +607,9 @@ class OverlayController(private val context: Context, private val finish: () -> 
         if (block()) finish() else showFeedback("Keine passende App gefunden")
     }
 
-    private fun crop(r: Rect?): Bitmap? {
-        val src = pixels ?: return null
-        if (r == null) return src
-        val x = r.left.roundToInt().coerceIn(0, src.width - 1)
-        val y = r.top.roundToInt().coerceIn(0, src.height - 1)
-        val w = r.width.roundToInt().coerceIn(1, src.width - x)
-        val h = r.height.roundToInt().coerceIn(1, src.height - y)
-        return Bitmap.createBitmap(src, x, y, w, h)
-    }
-
-    private fun shareImage(r: Rect?) = scope.launch {
-        val uri = withContext(Dispatchers.IO) { crop(r)?.let { SystemActions.saveImage(context, it) } }
+    private fun shareScreenshot() = scope.launch {
+        val uri = withContext(Dispatchers.IO) { pixels?.let { SystemActions.saveImage(context, it) } }
         if (uri != null) launchExternal { SystemActions.shareImage(context, uri) } else showFeedback("Bild nicht verfügbar")
-    }
-
-    private fun copyImage(r: Rect) = scope.launch {
-        val uri = withContext(Dispatchers.IO) { crop(r)?.let { SystemActions.saveImage(context, it) } }
-        if (uri != null) {
-            SystemActions.copyImage(context, uri)
-            showFeedback("Bild kopiert")
-            haptics(confirm())
-        } else {
-            showFeedback("Bild nicht verfügbar")
-        }
     }
 
     private fun showFeedback(msg: String) {

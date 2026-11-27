@@ -32,12 +32,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.volcanoproject.encircle.R
-import de.volcanoproject.encircle.actions.SystemActions
 import de.volcanoproject.encircle.setup.AssistantSetup
 import de.volcanoproject.encircle.setup.SetupStatus
 
@@ -48,10 +46,14 @@ private enum class StepState { Done, Current, Upcoming }
  * Each step ticks itself off as soon as the system reports it done; the current one is expanded.
  */
 @Composable
-fun SetupSteps(status: SetupStatus, onOpenAssistant: () -> Unit, onTry: () -> Unit) {
-    val context = LocalContext.current
+fun SetupSteps(
+    status: SetupStatus,
+    onOpenAssistant: () -> Unit,
+    onOpenSettings: (actions: List<String>) -> Unit,
+    onTry: () -> Unit,
+) {
     val scheme = MaterialTheme.colorScheme
-    val done = listOf(status.assistant, status.screenContent, status.shortcutUsed)
+    val done = status.steps
     val current = done.indexOfFirst { !it }
     fun state(i: Int) = when {
         done[i] -> StepState.Done
@@ -94,7 +96,7 @@ fun SetupSteps(status: SetupStatus, onOpenAssistant: () -> Unit, onTry: () -> Un
                             "Wähle in den Einstellungen kurz „Keine“ und dann wieder Encircle."
                     } else {
                         "Android startet nur den digitalen Assistenten über einen Kurzbefehl. " +
-                            "Wähle dort Encircle aus."
+                            "Wähle in den Einstellungen Encircle aus."
                     },
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -116,11 +118,11 @@ fun SetupSteps(status: SetupStatus, onOpenAssistant: () -> Unit, onTry: () -> Un
                 Text(status.plan.title, style = MaterialTheme.typography.titleSmall)
                 Text(status.plan.howTo, style = MaterialTheme.typography.bodyMedium)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { SystemActions.openSettings(context, status.plan.settingsActions) }) {
+                    Button(onClick = { onOpenSettings(status.plan.settingsActions) }) {
                         Text(status.plan.buttonLabel)
                     }
                     if (status.plan.offerButtonNavigation) {
-                        TextButton(onClick = { SystemActions.openSettings(context, listOf(AssistantSetup.ACTION_NAVIGATION_MODE)) }) {
+                        TextButton(onClick = { onOpenSettings(listOf(AssistantSetup.ACTION_NAVIGATION_MODE)) }) {
                             Text("Lieber Tasten-Navigation")
                         }
                     }
