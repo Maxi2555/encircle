@@ -24,6 +24,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -167,21 +168,25 @@ fun LogoRing(modifier: Modifier = Modifier, busy: Boolean = false) {
 /**
  * The logo drawing itself: the ring grows from nothing into the open circle while turning into place,
  * then the star flashes up in its gap with a burst of light. It ends exactly like a resting [LogoRing].
- * [onRevealed] fires when the star has appeared, so text can follow it.
+ * [onRevealed] fires when the star has appeared, so text can follow it. With [revealed] it starts at rest,
+ * for when it has played before.
  */
 @Composable
-fun LogoReveal(modifier: Modifier = Modifier, onRevealed: () -> Unit = {}) {
+fun LogoReveal(modifier: Modifier = Modifier, revealed: Boolean = false, onRevealed: () -> Unit = {}) {
     val glow = rememberGlowPalette()
-    val ring = remember { Animatable(0f) }
-    val star = remember { Animatable(0f) }
-    val burst = remember { Animatable(0f) }
+    val start = if (revealed) 1f else 0f
+    val ring = remember { Animatable(start) }
+    val star = remember { Animatable(start) }
+    val burst = remember { Animatable(start) }
+    val reveal by rememberUpdatedState(onRevealed)
     LaunchedEffect(Unit) {
+        if (ring.value >= 1f) return@LaunchedEffect
         delay(REVEAL_DELAY_MS)
         ring.animateTo(1f, tween(REVEAL_RING_MS, easing = FastOutSlowInEasing))
         launch { burst.animateTo(1f, tween(REVEAL_BURST_MS, easing = LinearOutSlowInEasing)) }
         launch {
             delay(REVEAL_BURST_MS / 3L)
-            onRevealed()
+            reveal()
         }
         star.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = Spring.StiffnessMediumLow))
     }

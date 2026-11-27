@@ -158,7 +158,10 @@ fun Onboarding(status: SetupStatus, onOpenAssistant: () -> Unit, onFinish: () ->
 
 @Composable
 private fun PageDots(count: Int, current: Int) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+    Row(
+        Modifier.fillMaxWidth().semantics { contentDescription = "Seite ${current + 1} von $count" },
+        horizontalArrangement = Arrangement.Center,
+    ) {
         repeat(count) { i ->
             val active = i == current
             val width by animateDpAsState(if (active) 24.dp else 8.dp, label = "dot")
@@ -183,7 +186,7 @@ private fun PageDots(count: Int, current: Int) {
 private fun WelcomePage() {
     var revealed by rememberSaveable { mutableStateOf(false) }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        LogoReveal(Modifier.size(156.dp), onRevealed = { revealed = true })
+        LogoReveal(Modifier.size(156.dp), revealed = revealed, onRevealed = { revealed = true })
         Spacer(Modifier.height(36.dp))
         // The name and tagline fade and rise in once the star has flashed. Their space is reserved from the
         // start, so the logo does not move.
@@ -198,7 +201,7 @@ private fun WelcomePage() {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                "ENCIRCLE",
+                "Encircle",
                 style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = spacing.em,
@@ -299,7 +302,7 @@ private fun PracticePage(status: SetupStatus) {
                         .size(112.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color.White)
-                        .padding(10.dp),
+                        .padding(14.dp),
                 ) {
                     QrCode(Modifier.fillMaxSize())
                 }
