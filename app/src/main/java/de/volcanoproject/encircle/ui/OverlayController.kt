@@ -9,6 +9,7 @@ import android.os.Build
 import android.util.Log
 import android.view.HapticFeedbackConstants
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -116,10 +117,17 @@ class OverlayController(private val context: Context, private val finish: () -> 
         sessionId++
         exiting = false
         scope.launch(Dispatchers.IO) { SystemActions.pruneShared(context) }
-        Diagnostics.start(context, "Flags 0x" + Integer.toHexString(showFlags) + if (screenshotExpected) " · Screenshot angefordert" else " · ohne Screenshot")
+        Diagnostics.start(
+            context,
+            str(
+                R.string.diag_flags,
+                Integer.toHexString(showFlags),
+                str(if (screenshotExpected) R.string.diag_screenshot_requested else R.string.diag_without_screenshot),
+            ),
+        )
         if (!screenshotExpected) {
             screenshotMissing = image == null
-            Diagnostics.put(context, "Screenshot", "vom System nicht angefordert")
+            Diagnostics.put(context, Diagnostics.Key.Screenshot, str(R.string.diag_not_requested))
             return
         }
         timeout?.cancel()
@@ -127,7 +135,7 @@ class OverlayController(private val context: Context, private val finish: () -> 
             delay(2000)
             if (image == null) {
                 screenshotMissing = true
-                Diagnostics.put(context, "Screenshot", "nach 2 s nicht angekommen")
+                Diagnostics.put(context, Diagnostics.Key.Screenshot, str(R.string.diag_not_arrived))
             }
         }
     }
@@ -136,10 +144,10 @@ class OverlayController(private val context: Context, private val finish: () -> 
         timeout?.cancel()
         if (bitmap == null) {
             screenshotMissing = true
-            Diagnostics.put(context, "Screenshot", "leer (null) vom System")
+            Diagnostics.put(context, Diagnostics.Key.Screenshot, str(R.string.diag_empty))
             return
         }
-        Diagnostics.put(context, "Screenshot", "${bitmap.width}×${bitmap.height} ${bitmap.config}")
+        Diagnostics.put(context, Diagnostics.Key.Screenshot, "${bitmap.width}×${bitmap.height} ${bitmap.config}")
         screenshotMissing = false
         clearAnalysis()
         image = bitmap.asImageBitmap()
@@ -150,14 +158,14 @@ class OverlayController(private val context: Context, private val finish: () -> 
             launch {
                 val t0 = SystemClock.elapsedRealtime()
                 codes = try {
-                    ScreenAnalyzer.scanCodes(soft).also {
-                        Diagnostics.put(context, "Codes", "${it.size} in ${SystemClock.elapsedRealtime() - t0} ms")
+                    ScreenAnalyzer.scanCodes(soft, context.resources).also {
+                        Diagnostics.put(context, Diagnostics.Key.Codes, str(R.string.diag_codes_value, it.size, (SystemClock.elapsedRealtime() - t0).toInt()))
                     }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
                     Log.w(TAG, "scan failed", e)
-                    Diagnostics.put(context, "Codes", "Fehler: ${e.javaClass.simpleName} ${e.message.orEmpty()}")
+                    Diagnostics.put(context, Diagnostics.Key.Codes, str(R.string.diag_error, "${e.javaClass.simpleName} ${e.message.orEmpty()}"))
                     emptyList()
                 }
                 codesReady = true
@@ -168,10 +176,14 @@ class OverlayController(private val context: Context, private val finish: () -> 
                     val result = withTimeoutOrNull(OCR_TIMEOUT_MS) { ScreenAnalyzer.recognizeText(soft) }
                     val ms = SystemClock.elapsedRealtime() - t0
                     if (result == null) {
-                        Diagnostics.put(context, "Texterkennung", "Zeitüberschreitung nach $ms ms")
+                        Diagnostics.put(context, Diagnostics.Key.TextRecognition, str(R.string.diag_timeout, ms.toInt()))
                         TextLayout.EMPTY
                     } else {
-                        Diagnostics.put(context, "Texterkennung", "${result.words.size} Wörter in $ms ms")
+                        Diagnostics.put(
+                            context,
+                            Diagnostics.Key.TextRecognition,
+                            context.resources.getQuantityString(R.plurals.diag_words, result.words.size, result.words.size, ms.toInt()),
+                        )
                         entities = withContext(Dispatchers.Default) { EntityFinder.find(result) }
                         result
                     }
@@ -179,7 +191,7 @@ class OverlayController(private val context: Context, private val finish: () -> 
                     throw e
                 } catch (e: Exception) {
                     Log.w(TAG, "ocr failed", e)
-                    Diagnostics.put(context, "Texterkennung", "Fehler: ${e.javaClass.simpleName} ${e.message.orEmpty()}")
+                    Diagnostics.put(context, Diagnostics.Key.TextRecognition, str(R.string.diag_error, "${e.javaClass.simpleName} ${e.message.orEmpty()}"))
                     TextLayout.EMPTY
                 }
                 textReady = true
@@ -493,10 +505,10 @@ class OverlayController(private val context: Context, private val finish: () -> 
     private fun idleActions(): List<OverlayAction> = if (analyzing) emptyList() else buildList {
         if (codes.size == 1) {
             val c = codes.first()
-            add(OverlayAction(c.formatName + " anzeigen", R.drawable.ic_qr, primary = true) { selectCode(c) })
+            add(OverlayAction(str(R.string.action_show_code, c.formatName), R.drawable.ic_qr, primary = true) { selectCode(c) })
         }
-        if (!layout.isEmpty) add(OverlayAction("Gesamten Text", R.drawable.ic_select_all, primary = isEmpty()) { selectAllText() })
-        if (image != null) add(OverlayAction("Screenshot teilen", R.drawable.ic_image) { shareScreenshot() })
+        if (!layout.isEmpty) add(OverlayAction(str(R.string.action_all_text), R.drawable.ic_select_all, primary = isEmpty()) { selectAllText() })
+        if (image != null) add(OverlayAction(str(R.string.action_share_screenshot), R.drawable.ic_image) { shareScreenshot() })
     }
 
     private fun textActions(text: String, allSelected: Boolean): List<OverlayAction> = buildList {
@@ -506,110 +518,110 @@ class OverlayController(private val context: Context, private val finish: () -> 
         if (exact != null) {
             addAll(entityActions(exact, primary = true))
             if (exact.kind != EntityKind.Iban && text.trim() != exact.value) {
-                add(OverlayAction("Kopieren", R.drawable.ic_copy) { copy(text) })
+                add(OverlayAction(str(R.string.action_copy), R.drawable.ic_copy) { copy(text) })
             }
-            add(OverlayAction("Teilen", R.drawable.ic_share) { launchExternal { SystemActions.shareText(context, exact.value) } })
+            add(OverlayAction(str(R.string.action_share), R.drawable.ic_share) { launchExternal { SystemActions.shareText(context, exact.value) } })
             return@buildList
         }
         // A longer selection: copying comes first, the first link or address inside is offered next to it.
-        add(OverlayAction("Kopieren", R.drawable.ic_copy, primary = true) { copy(text) })
+        add(OverlayAction(str(R.string.action_copy), R.drawable.ic_copy, primary = true) { copy(text) })
         (matches.firstOrNull { it.kind == EntityKind.Link } ?: matches.firstOrNull())?.let { add(entityActions(it, primary = false).first()) }
-        add(OverlayAction("Teilen", R.drawable.ic_share) { launchExternal { SystemActions.shareText(context, text) } })
-        if (!allSelected) add(OverlayAction("Alles auswählen", R.drawable.ic_select_all) { selectAllText() })
+        add(OverlayAction(str(R.string.action_share), R.drawable.ic_share) { launchExternal { SystemActions.shareText(context, text) } })
+        if (!allSelected) add(OverlayAction(str(R.string.action_select_all), R.drawable.ic_select_all) { selectAllText() })
     }
 
     private fun entityActions(m: EntityMatch, primary: Boolean): List<OverlayAction> = when (m.kind) {
         EntityKind.Link -> listOf(
-            OverlayAction("Link öffnen", R.drawable.ic_open, primary) { launchExternal { SystemActions.openUri(context, m.value) } },
-            OverlayAction("Link kopieren", R.drawable.ic_link) { copy(m.value) },
+            OverlayAction(str(R.string.action_open_link), R.drawable.ic_open, primary) { launchExternal { SystemActions.openUri(context, m.value) } },
+            OverlayAction(str(R.string.action_copy_link), R.drawable.ic_link) { copy(m.value) },
         )
         EntityKind.Email -> listOf(
-            OverlayAction("E-Mail schreiben", R.drawable.ic_mail, primary) { launchExternal { SystemActions.email(context, m.value) } },
-            OverlayAction("Adresse kopieren", R.drawable.ic_copy) { copy(m.value) },
+            OverlayAction(str(R.string.action_write_email), R.drawable.ic_mail, primary) { launchExternal { SystemActions.email(context, m.value) } },
+            OverlayAction(str(R.string.action_copy_address), R.drawable.ic_copy) { copy(m.value) },
         )
         EntityKind.Phone -> listOf(
-            OverlayAction("Anrufen", R.drawable.ic_call, primary) { launchExternal { SystemActions.dial(context, m.value) } },
-            OverlayAction("SMS", R.drawable.ic_sms) { launchExternal { SystemActions.sms(context, m.value, null) } },
-            OverlayAction("Nummer kopieren", R.drawable.ic_copy) { copy(m.value) },
+            OverlayAction(str(R.string.action_call), R.drawable.ic_call, primary) { launchExternal { SystemActions.dial(context, m.value) } },
+            OverlayAction(str(R.string.action_sms), R.drawable.ic_sms) { launchExternal { SystemActions.sms(context, m.value, null) } },
+            OverlayAction(str(R.string.action_copy_number), R.drawable.ic_copy) { copy(m.value) },
         )
         EntityKind.Iban -> listOf(
-            OverlayAction("IBAN kopieren", R.drawable.ic_copy, primary) { copy(m.value) },
+            OverlayAction(str(R.string.action_copy_iban), R.drawable.ic_copy, primary) { copy(m.value) },
         )
     }
 
     private fun codeActions(c: DetectedCode): List<OverlayAction> = buildList {
         when (val k = c.content) {
             is CodeContent.Link -> {
-                add(OverlayAction("Öffnen", R.drawable.ic_open, true) { launchExternal { SystemActions.openUri(context, k.url) } })
-                add(OverlayAction("Link kopieren", R.drawable.ic_copy) { copy(k.url) })
+                add(OverlayAction(str(R.string.action_open), R.drawable.ic_open, true) { launchExternal { SystemActions.openUri(context, k.url) } })
+                add(OverlayAction(str(R.string.action_copy_link), R.drawable.ic_copy) { copy(k.url) })
             }
             is CodeContent.Wifi -> {
                 if (Build.VERSION.SDK_INT >= 30) {
-                    add(OverlayAction("Verbinden", R.drawable.ic_wifi, true) {
+                    add(OverlayAction(str(R.string.action_connect), R.drawable.ic_wifi, true) {
                         launchExternal {
                             SystemActions.connectWifi(context, k) || run {
-                                k.password?.let { SystemActions.copyText(context, it, "WLAN-Passwort", sensitive = true) }
+                                k.password?.let { SystemActions.copyText(context, it, str(R.string.clip_wifi_password), sensitive = true) }
                                 SystemActions.openWifiSettings(context)
                             }
                         }
                     })
                 }
                 k.password?.let { pw ->
-                    add(OverlayAction("Passwort kopieren", R.drawable.ic_key, isEmpty()) { copy(pw, sensitive = true) })
+                    add(OverlayAction(str(R.string.action_copy_password), R.drawable.ic_key, isEmpty()) { copy(pw, sensitive = true) })
                 }
-                add(OverlayAction("Netzwerkname kopieren", R.drawable.ic_copy) { copy(k.ssid) })
+                add(OverlayAction(str(R.string.action_copy_network), R.drawable.ic_copy) { copy(k.ssid) })
             }
             is CodeContent.Contact -> {
-                add(OverlayAction("Kontakt speichern", R.drawable.ic_person_add, true) { launchExternal { SystemActions.addContact(context, k.vcard) } })
-                add(OverlayAction("Kopieren", R.drawable.ic_copy) { copy(c.raw) })
+                add(OverlayAction(str(R.string.action_save_contact), R.drawable.ic_person_add, true) { launchExternal { SystemActions.addContact(context, k.vcard) } })
+                add(OverlayAction(str(R.string.action_copy), R.drawable.ic_copy) { copy(c.raw) })
             }
             is CodeContent.Email -> {
-                add(OverlayAction("E-Mail schreiben", R.drawable.ic_mail, true) { launchExternal { SystemActions.email(context, k.to, k.subject, k.body) } })
-                add(OverlayAction("Adresse kopieren", R.drawable.ic_copy) { copy(k.to) })
+                add(OverlayAction(str(R.string.action_write_email), R.drawable.ic_mail, true) { launchExternal { SystemActions.email(context, k.to, k.subject, k.body) } })
+                add(OverlayAction(str(R.string.action_copy_address), R.drawable.ic_copy) { copy(k.to) })
             }
             is CodeContent.Phone -> {
-                add(OverlayAction("Anrufen", R.drawable.ic_call, true) { launchExternal { SystemActions.dial(context, k.number) } })
-                add(OverlayAction("Nummer kopieren", R.drawable.ic_copy) { copy(k.number) })
+                add(OverlayAction(str(R.string.action_call), R.drawable.ic_call, true) { launchExternal { SystemActions.dial(context, k.number) } })
+                add(OverlayAction(str(R.string.action_copy_number), R.drawable.ic_copy) { copy(k.number) })
             }
             is CodeContent.Sms -> {
-                add(OverlayAction("SMS schreiben", R.drawable.ic_sms, true) { launchExternal { SystemActions.sms(context, k.number, k.body) } })
-                add(OverlayAction("Kopieren", R.drawable.ic_copy) { copy(c.raw) })
+                add(OverlayAction(str(R.string.action_write_sms), R.drawable.ic_sms, true) { launchExternal { SystemActions.sms(context, k.number, k.body) } })
+                add(OverlayAction(str(R.string.action_copy), R.drawable.ic_copy) { copy(c.raw) })
             }
             is CodeContent.Geo -> {
-                add(OverlayAction("In Karten öffnen", R.drawable.ic_place, true) { launchExternal { SystemActions.openUri(context, k.uri) } })
-                add(OverlayAction("Kopieren", R.drawable.ic_copy) { copy(c.raw) })
+                add(OverlayAction(str(R.string.action_open_maps), R.drawable.ic_place, true) { launchExternal { SystemActions.openUri(context, k.uri) } })
+                add(OverlayAction(str(R.string.action_copy), R.drawable.ic_copy) { copy(c.raw) })
             }
             is CodeContent.Event -> {
-                add(OverlayAction("In Kalender eintragen", R.drawable.ic_event, true) { launchExternal { SystemActions.addEvent(context, k) } })
-                add(OverlayAction("Kopieren", R.drawable.ic_copy) { copy(c.raw) })
+                add(OverlayAction(str(R.string.action_add_calendar), R.drawable.ic_event, true) { launchExternal { SystemActions.addEvent(context, k) } })
+                add(OverlayAction(str(R.string.action_copy), R.drawable.ic_copy) { copy(c.raw) })
             }
             is CodeContent.OtherUri -> {
-                add(OverlayAction("Öffnen", R.drawable.ic_open, true) { launchExternal { SystemActions.openUri(context, k.uri) } })
-                add(OverlayAction("Kopieren", R.drawable.ic_copy) { copy(c.raw) })
+                add(OverlayAction(str(R.string.action_open), R.drawable.ic_open, true) { launchExternal { SystemActions.openUri(context, k.uri) } })
+                add(OverlayAction(str(R.string.action_copy), R.drawable.ic_copy) { copy(c.raw) })
             }
-            is CodeContent.Product -> add(OverlayAction("Nummer kopieren", R.drawable.ic_copy, true) { copy(k.code) })
+            is CodeContent.Product -> add(OverlayAction(str(R.string.action_copy_number), R.drawable.ic_copy, true) { copy(k.code) })
             is CodeContent.Text -> {
                 EntityFinder.findIn(k.text).firstOrNull()?.let { addAll(entityActions(it, primary = true)) }
-                add(OverlayAction("Kopieren", R.drawable.ic_copy, isEmpty()) { copy(k.text) })
+                add(OverlayAction(str(R.string.action_copy), R.drawable.ic_copy, isEmpty()) { copy(k.text) })
             }
         }
-        add(OverlayAction("Teilen", R.drawable.ic_share) { launchExternal { SystemActions.shareText(context, c.raw) } })
+        add(OverlayAction(str(R.string.action_share), R.drawable.ic_share) { launchExternal { SystemActions.shareText(context, c.raw) } })
     }
 
     private fun copy(text: String, sensitive: Boolean = false) {
         SystemActions.copyText(context, text, sensitive = sensitive)
-        showFeedback("In die Zwischenablage kopiert")
+        showFeedback(str(R.string.feedback_copied))
         haptics(confirm())
     }
 
     /** Starts something in another app, then closes the overlay right away. */
     private fun launchExternal(block: () -> Boolean) {
-        if (block()) finish() else showFeedback("Keine passende App gefunden")
+        if (block()) finish() else showFeedback(str(R.string.feedback_no_app))
     }
 
     private fun shareScreenshot() = scope.launch {
         val uri = withContext(Dispatchers.IO) { pixels?.let { SystemActions.saveImage(context, it) } }
-        if (uri != null) launchExternal { SystemActions.shareImage(context, uri) } else showFeedback("Bild nicht verfügbar")
+        if (uri != null) launchExternal { SystemActions.shareImage(context, uri) } else showFeedback(str(R.string.feedback_image_unavailable))
     }
 
     private fun showFeedback(msg: String) {
@@ -620,6 +632,8 @@ class OverlayController(private val context: Context, private val finish: () -> 
             feedback = null
         }
     }
+
+    private fun str(@StringRes id: Int, vararg args: Any): String = context.getString(id, *args)
 
     private fun confirm() = if (Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.VIRTUAL_KEY
     private fun strokeTick() =

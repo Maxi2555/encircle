@@ -18,7 +18,7 @@ Android lets third-party apps react to the home long-press (or the assistant ges
 ### Platform quirks worth knowing
 
 - On AOSP-based systems such as GrapheneOS, Launcher3 sends a long-press on the gesture handle to Contextual Search only. Encircle is reached there through the corner swipe or the three-button home long-press.
-- AOSP drops a non-system assistant at user start when no speech recognizer is configured. `AssistService.isRoleHeldButDisconnected` detects that state so the setup screen can guide the user.
+- AOSP drops a non-system assistant at user start when no speech recognizer is configured, and since Android 17 it never auto-selects a third-party recognizer such as Encircle's stub. `AssistService.isRoleHeldButDisconnected` detects that state; the setup screen offers reconnecting and the per-user adb command from `AssistantSetup.recognizerCommand` that fixes it for good.
 
 ## Pipeline per invocation
 

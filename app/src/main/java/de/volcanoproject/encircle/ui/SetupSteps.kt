@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -29,10 +31,17 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.volcanoproject.encircle.R
@@ -51,6 +60,7 @@ fun SetupSteps(
     onOpenAssistant: () -> Unit,
     onOpenSettings: (actions: List<String>) -> Unit,
     onTry: () -> Unit,
+    onCopy: (String) -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     val done = status.steps
@@ -76,12 +86,12 @@ fun SetupSteps(
                 )
                 Spacer(Modifier.width(12.dp))
                 Column {
-                    Text(if (status.ready) "Bereit" else "Einrichtung", style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(if (status.ready) R.string.setup_ready else R.string.setup_title), style = MaterialTheme.typography.titleLarge)
                     Text(
-                        when (status.stepsLeft) {
-                            0 -> "Encircle startet über deinen Kurzbefehl."
-                            1 -> "Noch ein Schritt"
-                            else -> "Noch ${status.stepsLeft} Schritte"
+                        if (status.ready) {
+                            stringResource(R.string.setup_ready_summary)
+                        } else {
+                            pluralStringResource(R.plurals.setup_steps_left, status.stepsLeft, status.stepsLeft)
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = scheme.onSurfaceVariant,
@@ -89,46 +99,42 @@ fun SetupSteps(
                 }
             }
 
-            Step(1, "Encircle als Assistent wählen", state(0)) {
+            Step(1, stringResource(R.string.setup_assistant_title), state(0)) {
                 Text(
-                    if (status.disconnected) {
-                        "Encircle ist gewählt, aber Android hat es nach einem Neustart abgemeldet. " +
-                            "Wähle in den Einstellungen kurz „Keine“ und dann wieder Encircle."
-                    } else {
-                        "Android startet nur den digitalen Assistenten über einen Kurzbefehl. " +
-                            "Wähle in den Einstellungen Encircle aus."
-                    },
+                    stringResource(if (status.disconnected) R.string.setup_assistant_disconnected else R.string.setup_assistant_text),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Button(onClick = onOpenAssistant) {
-                    Text(if (status.disconnected) "Neu verbinden" else "Assistent auswählen")
+                    Text(stringResource(if (status.disconnected) R.string.setup_reconnect else R.string.setup_choose_assistant))
+                }
+                if (status.disconnected && status.recognizerCommand.isNotEmpty()) {
+                    PermanentFix(status.recognizerCommand, onCopy)
                 }
             }
 
-            Step(2, "Bildschirminhalt erlauben", state(1)) {
+            Step(2, stringResource(R.string.setup_screen_title), state(1)) {
                 Text(
-                    "Schalte auf derselben Seite „Bildschirm- und App-Daten verwenden“ und, falls vorhanden, " +
-                        "„Screenshot verwenden“ ein. Ohne diese Freigabe sieht Encircle den Bildschirm nicht.",
+                    stringResource(R.string.setup_screen_text),
                     style = MaterialTheme.typography.bodyMedium,
                 )
-                Button(onClick = onOpenAssistant) { Text("Freigabe öffnen") }
+                Button(onClick = onOpenAssistant) { Text(stringResource(R.string.setup_open_access)) }
             }
 
-            Step(3, if (done[2]) status.plan.title else "Kurzbefehl einrichten", state(2)) {
-                Text(status.plan.title, style = MaterialTheme.typography.titleSmall)
-                Text(status.plan.howTo, style = MaterialTheme.typography.bodyMedium)
+            Step(3, stringResource(if (done[2]) status.plan.title else R.string.setup_shortcut_title), state(2)) {
+                Text(stringResource(status.plan.title), style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(status.plan.howTo), style = MaterialTheme.typography.bodyMedium)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = { onOpenSettings(status.plan.settingsActions) }) {
-                        Text(status.plan.buttonLabel)
+                        Text(stringResource(status.plan.buttonLabel))
                     }
                     if (status.plan.offerButtonNavigation) {
                         TextButton(onClick = { onOpenSettings(listOf(AssistantSetup.ACTION_NAVIGATION_MODE)) }) {
-                            Text("Lieber Tasten-Navigation")
+                            Text(stringResource(R.string.setup_prefer_buttons))
                         }
                     }
                 }
                 Text(
-                    "Probier den Kurzbefehl jetzt aus. Sobald Encircle darüber startet, ist dieser Schritt erledigt.",
+                    stringResource(R.string.setup_try_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = scheme.onSurfaceVariant,
                 )
@@ -138,7 +144,7 @@ fun SetupSteps(
                 FilledTonalButton(onClick = onTry) {
                     Icon(painterResource(R.drawable.ic_play), null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("In der App ausprobieren")
+                    Text(stringResource(R.string.setup_try_in_app))
                 }
             }
         }
@@ -157,7 +163,7 @@ private fun Step(number: Int, title: String, state: StepState, content: @Composa
         ) {
             Box(contentAlignment = Alignment.Center) {
                 if (state == StepState.Done) {
-                    Icon(painterResource(R.drawable.ic_check), "Erledigt", Modifier.size(18.dp))
+                    Icon(painterResource(R.drawable.ic_check), stringResource(R.string.setup_done), Modifier.size(18.dp))
                 } else {
                     Text("$number", style = MaterialTheme.typography.labelLarge)
                 }
@@ -178,6 +184,31 @@ private fun Step(number: Int, title: String, state: StepState, content: @Composa
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { content() }
             }
+        }
+    }
+}
+
+/** Explains the one-time adb fix for the sign-out at every start and offers the command to copy. */
+@Composable
+private fun PermanentFix(command: String, onCopy: (String) -> Unit) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    TextButton(onClick = { open = !open }, contentPadding = PaddingValues(horizontal = 0.dp)) {
+        Text(stringResource(R.string.setup_fix_permanently))
+    }
+    AnimatedVisibility(open, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.setup_fix_text), style = MaterialTheme.typography.bodyMedium)
+            Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerHighest) {
+                SelectionContainer {
+                    Text(
+                        command,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(12.dp),
+                    )
+                }
+            }
+            FilledTonalButton(onClick = { onCopy(command) }) { Text(stringResource(R.string.setup_copy_command)) }
         }
     }
 }

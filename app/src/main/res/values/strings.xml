@@ -1,4 +1,184 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- English, the default. Translations live in values-<language>/strings.xml. -->
 <resources>
-    <string name="app_name">Encircle</string>
+    <string name="app_name" translatable="false">Encircle</string>
+    <string name="entity_link" translatable="false">Link</string>
+    <string name="entity_iban" translatable="false">IBAN</string>
+    <string name="type_link" translatable="false">Link</string>
+    <string name="type_sms" translatable="false">SMS</string>
+    <string name="type_text" translatable="false">Text</string>
+
+    <string name="home_tagline">Start Encircle with a shortcut, then select, copy and share text or codes on your screen.</string>
+    <string name="home_usage_title">How to use</string>
+    <string name="home_usage_1">Tap a word to select it. Tap again to extend to the sentence, then the paragraph.</string>
+    <string name="home_usage_2">Long-press to select the whole paragraph.</string>
+    <string name="home_usage_3">Swipe over text to select it like a highlighter, or across a paragraph to take all of it.</string>
+    <string name="home_usage_4">Circle anything to select it. Without text, the area is selected as an image.</string>
+    <string name="home_usage_5">The handles move the start and end of the selection.</string>
+    <string name="home_usage_6">Recognized QR codes and barcodes light up. Tap one to see its content and actions.</string>
+    <string name="home_usage_7">Push the bar at the bottom up to see what it covers. Push it out at the top, or go back, to close Encircle.</string>
+    <string name="home_try_title">Try it here</string>
+    <string name="home_try_text">Encircle runs entirely on your device. It searches nothing online and sends no data anywhere. Try it on this paragraph: tap a word, swipe across it or circle it. Links like https://example.org and addresses like hello@example.org are recognized.</string>
+    <string name="home_diagnostics_title">Last invocation</string>
+    <string name="home_licenses">Encircle is free software under the Apache License 2.0, source code: github.com/Maxi2555/encircle. Barcodes: zxing-cpp (Apache-2.0). Text recognition: Google ML Kit (proprietary, offline on the device). Icons: Material Design Icons (Apache-2.0).</string>
+    <string name="setup_title">Setup</string>
+    <string name="setup_ready">Ready</string>
+    <string name="setup_ready_summary">Encircle starts with your shortcut.</string>
+    <plurals name="setup_steps_left">
+        <item quantity="one">One step left</item>
+        <item quantity="other">%d steps left</item>
+    </plurals>
+    <string name="setup_assistant_title">Choose Encircle as assistant</string>
+    <string name="setup_assistant_text">Android only starts the digital assistant with a shortcut. Choose Encircle in the settings.</string>
+    <string name="setup_assistant_disconnected">Encircle is selected, but Android signed it out when the device or this user started. In the settings, briefly choose “None” and then Encircle again.</string>
+    <string name="setup_choose_assistant">Choose assistant</string>
+    <string name="setup_reconnect">Reconnect</string>
+    <string name="setup_fix_permanently">Fix permanently</string>
+    <string name="setup_fix_text">Android signs Encircle out at every start of this user as long as no speech recognizer is set, and it never picks the one from Encircle by itself. Run this command once on a computer with adb, then reconnect:</string>
+    <string name="setup_copy_command">Copy command</string>
+    <string name="setup_screen_title">Allow screen content</string>
+    <string name="setup_screen_text">On the same page, turn on “Use text from screen” and, where offered, “Use screenshot”. Without this, Encircle cannot see the screen.</string>
+    <string name="setup_open_access">Allow access</string>
+    <string name="setup_shortcut_title">Set up the shortcut</string>
+    <string name="setup_prefer_buttons">Use button navigation instead</string>
+    <string name="setup_try_hint">Try the shortcut now. As soon as Encircle starts through it, this step is done.</string>
+    <string name="setup_try_in_app">Try in the app</string>
+    <string name="try_failed_not_ready">Encircle is not ready yet. Try again in a moment.</string>
+    <string name="try_failed_no_assistant">Encircle is no longer the active assistant</string>
+    <string name="setup_done">Done</string>
+    <string name="plan_buttons_title">Hold Home</string>
+    <string name="plan_buttons_how">Press and hold the Home button and Encircle starts. If nothing happens, turn on “Hold Home to invoke assistant” in the button settings.</string>
+    <string name="plan_buttons_button">Button settings</string>
+    <string name="plan_buttons_pixel_how">Under Navigation mode, turn off “Circle to Search”. Then a long press on the Home button starts Encircle.</string>
+    <string name="plan_buttons_samsung_how">Under Settings › Display › Navigation bar, turn off “Circle to Search”. Then a long press on the Home button starts Encircle.</string>
+    <string name="plan_handle_title">Hold the navigation bar</string>
+    <string name="plan_pixel_how">Under Navigation mode, turn off “Circle to Search”. Then a long press on the bar at the bottom starts Encircle. You can also swipe diagonally up from a bottom corner.</string>
+    <string name="plan_pixel_button">Open navigation mode</string>
+    <string name="plan_samsung_how">Under Settings › Display › Navigation bar, turn off “Circle to Search”. Then a long press on the bar starts Encircle.</string>
+    <string name="plan_samsung_button">Display settings</string>
+    <string name="plan_corner_title">Swipe from the corner</string>
+    <string name="plan_corner_how">In the gesture settings, turn on “Swipe to invoke assistant”. Then a diagonal swipe up from a bottom corner starts Encircle. On this system, a long press on the bar is reserved for Google search.</string>
+    <string name="plan_corner_button">Gesture settings</string>
+    <string name="onboarding_later">Set up later</string>
+    <string name="onboarding_back">Back</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_start">Let’s go</string>
+    <string name="onboarding_tagline">Select, copy and share text, links and codes on your screen. Completely offline.</string>
+    <string name="onboarding_step">Step %1$d of %2$d</string>
+    <string name="onboarding_page">Page %1$d of %2$d</string>
+    <string name="onboarding_assistant_text">Android only starts the digital assistant with a shortcut such as a long press on Home. Choose Encircle as the assistant and confirm the notice.</string>
+    <string name="onboarding_screen_text">On the same page, turn on “Use text from screen” and, where offered, “Use screenshot”. Encircle only reads the screen when you call it, and everything stays on your device.</string>
+    <string name="onboarding_shortcut_text">%1$s You will try it in the next step.</string>
+    <string name="onboarding_practice_title">Try it</string>
+    <string name="onboarding_practice_text">Start Encircle now with your shortcut: %1$s. Then select the sentence below or tap the QR code.</string>
+    <string name="onboarding_practice_sample">Read more about Encircle at encircle.example.org. Questions are welcome at hello@example.org.</string>
+    <string name="onboarding_practice_done">It worked! Encircle starts with your shortcut.</string>
+    <string name="onboarding_practice_waiting">Waiting for the first start through the shortcut …</string>
+    <string name="onboarding_qr_description">QR code for the Encircle project</string>
+    <string name="onboarding_done_title">All set</string>
+    <string name="onboarding_done_text">Start Encircle anytime like this: %1$s. The start page lists all selection gestures.</string>
+    <string name="onboarding_done_text_later">The start page has the setup and all selection gestures.</string>
+    <string name="onboarding_status_open">Still open. You can continue once it is done.</string>
+    <string name="bar_no_screen_title">No screen content</string>
+    <string name="bar_no_screen_text">Allow the assistant to use screenshots.</string>
+    <string name="bar_reading">Reading the screen</string>
+    <string name="bar_reading_hint">You can already circle</string>
+    <plurals name="bar_codes_found">
+        <item quantity="one">1 code found</item>
+        <item quantity="other">%d codes found</item>
+    </plurals>
+    <string name="bar_code_hint_one">Tap it or select text</string>
+    <string name="bar_code_hint_many">Tap one or select text</string>
+    <string name="bar_entities_found">%1$s found</string>
+    <string name="bar_entities_hint">Tap anything underlined</string>
+    <string name="bar_text_found">Text found</string>
+    <string name="bar_text_hint">Tap, select or circle</string>
+    <string name="bar_no_text">No text found</string>
+    <string name="bar_no_text_hint">You can still share the screenshot</string>
+    <plurals name="bar_words">
+        <item quantity="one">Text · 1 word</item>
+        <item quantity="other">Text · %d words</item>
+    </plurals>
+    <string name="bar_show_less">Show less</string>
+    <string name="bar_show_all">Show full text</string>
+    <string name="bar_clear_selection">Clear selection</string>
+    <string name="entity_email">Email address</string>
+    <string name="entity_phone">Phone number</string>
+    <plurals name="count_links">
+        <item quantity="one">1 link</item>
+        <item quantity="other">%d links</item>
+    </plurals>
+    <plurals name="count_addresses">
+        <item quantity="one">1 address</item>
+        <item quantity="other">%d addresses</item>
+    </plurals>
+    <plurals name="count_numbers">
+        <item quantity="one">1 number</item>
+        <item quantity="other">%d numbers</item>
+    </plurals>
+    <plurals name="count_ibans">
+        <item quantity="one">1 IBAN</item>
+        <item quantity="other">%d IBANs</item>
+    </plurals>
+    <string name="type_wifi">Wi-Fi</string>
+    <string name="type_contact">Contact</string>
+    <string name="type_email">Email</string>
+    <string name="type_phone">Phone</string>
+    <string name="type_place">Place</string>
+    <string name="type_event">Event</string>
+    <string name="type_product">Product number</string>
+    <string name="code_password_present">password included</string>
+    <string name="code_business_card">Business card</string>
+    <string name="format_qr">QR code</string>
+    <string name="format_micro_qr">Micro QR</string>
+    <string name="format_rmqr">rMQR code</string>
+    <string name="format_aztec">Aztec code</string>
+    <string name="format_barcode">Barcode</string>
+    <string name="missing_text">Encircle did not receive a screenshot. Either the open app does not allow screenshots, or access is turned off. In the digital assistant settings, turn on “Use text from screen” and, where offered, “Use screenshot”.</string>
+    <string name="missing_open_settings">Open settings</string>
+    <string name="action_show_code">Show %1$s</string>
+    <string name="action_all_text">All text</string>
+    <string name="action_share_screenshot">Share screenshot</string>
+    <string name="action_copy">Copy</string>
+    <string name="action_share">Share</string>
+    <string name="action_select_all">Select all</string>
+    <string name="action_open_link">Open link</string>
+    <string name="action_copy_link">Copy link</string>
+    <string name="action_write_email">Write email</string>
+    <string name="action_copy_address">Copy address</string>
+    <string name="action_call">Call</string>
+    <string name="action_sms">SMS</string>
+    <string name="action_copy_number">Copy number</string>
+    <string name="action_copy_iban">Copy IBAN</string>
+    <string name="action_open">Open</string>
+    <string name="action_connect">Connect</string>
+    <string name="action_copy_password">Copy password</string>
+    <string name="action_copy_network">Copy network name</string>
+    <string name="action_save_contact">Save contact</string>
+    <string name="action_write_sms">Write SMS</string>
+    <string name="action_open_maps">Open in Maps</string>
+    <string name="action_add_calendar">Add to calendar</string>
+    <string name="feedback_copied">Copied to clipboard</string>
+    <string name="feedback_no_app">No suitable app found</string>
+    <string name="feedback_image_unavailable">Image not available</string>
+    <string name="clip_text">Text</string>
+    <string name="clip_wifi_password">Wi-Fi password</string>
+    <string name="diag_time">Time</string>
+    <string name="diag_invocation">Invocation</string>
+    <string name="diag_screenshot">Screenshot</string>
+    <string name="diag_ocr">Text recognition</string>
+    <string name="diag_codes">Codes</string>
+    <string name="diag_flags">Flags 0x%1$s · %2$s</string>
+    <string name="diag_screenshot_requested">screenshot requested</string>
+    <string name="diag_without_screenshot">without screenshot</string>
+    <string name="diag_not_requested">not requested by the system</string>
+    <string name="diag_not_arrived">did not arrive within 2 s</string>
+    <string name="diag_empty">empty (null) from the system</string>
+    <string name="diag_codes_value">%1$d in %2$d ms</string>
+    <string name="diag_error">Error: %1$s</string>
+    <string name="diag_timeout">timed out after %1$d ms</string>
+    <plurals name="diag_words">
+        <item quantity="one">%1$d word in %2$d ms</item>
+        <item quantity="other">%1$d words in %2$d ms</item>
+    </plurals>
 </resources>

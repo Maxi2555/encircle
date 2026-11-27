@@ -3,9 +3,11 @@
 
 package de.volcanoproject.encircle.ui
 
+import android.content.res.Resources
 import android.util.DisplayMetrics
 import android.view.HapticFeedbackConstants
 import android.view.View
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
@@ -111,8 +113,10 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
@@ -701,7 +705,7 @@ private fun CodeBadges(c: OverlayController, modifier: Modifier = Modifier) {
 
 @Composable
 private fun CodeBadge(c: OverlayController, code: DetectedCode, index: Int) {
-    val (icon, label) = badgeFor(code)
+    val (icon, label) = badgeFor(code, LocalResources.current)
     val pop = remember(code.id, code.raw) { Animatable(0f) }
     LaunchedEffect(code.id, code.raw) {
         delay(180L + index * 70L)
@@ -734,15 +738,15 @@ private fun CodeBadge(c: OverlayController, code: DetectedCode, index: Int) {
     }
 }
 
-private fun badgeFor(code: DetectedCode): Pair<Int, String> = when (val k = code.content) {
+private fun badgeFor(code: DetectedCode, res: Resources): Pair<Int, String> = when (val k = code.content) {
     is CodeContent.Link -> R.drawable.ic_link to (android.net.Uri.parse(k.url).host?.removePrefix("www.") ?: k.url)
-    is CodeContent.Wifi -> R.drawable.ic_wifi to k.ssid.ifEmpty { "WLAN" }
-    is CodeContent.Contact -> R.drawable.ic_person_add to (k.name ?: "Kontakt")
+    is CodeContent.Wifi -> R.drawable.ic_wifi to k.ssid.ifEmpty { res.getString(R.string.type_wifi) }
+    is CodeContent.Contact -> R.drawable.ic_person_add to (k.name ?: res.getString(R.string.type_contact))
     is CodeContent.Email -> R.drawable.ic_mail to k.to
     is CodeContent.Phone -> R.drawable.ic_call to k.number
     is CodeContent.Sms -> R.drawable.ic_sms to k.number
-    is CodeContent.Geo -> R.drawable.ic_place to "Ort"
-    is CodeContent.Event -> R.drawable.ic_event to (k.title ?: "Termin")
+    is CodeContent.Geo -> R.drawable.ic_place to res.getString(R.string.type_place)
+    is CodeContent.Event -> R.drawable.ic_event to (k.title ?: res.getString(R.string.type_event))
     is CodeContent.OtherUri -> R.drawable.ic_open to k.uri.substringBefore(':')
     is CodeContent.Product -> R.drawable.ic_qr to k.code
     is CodeContent.Text -> R.drawable.ic_qr to code.formatName
@@ -774,7 +778,7 @@ private fun BottomPanel(
     val closeAt = { (restTop - safeTopPx - closeMarginPx).coerceAtLeast(hidePx) }
     var armed by remember { mutableStateOf(false) }
     val actions = remember(c.selection, c.layout, c.codes, c.image, c.entities, c.analyzing) { c.actions() }
-    val (title, preview) = barTexts(c)
+    val (title, preview) = barTexts(c, LocalResources.current)
     // Long text shows two lines; tapping it expands the bar to the full text, scrollable.
     var expanded by remember(c.selection) { mutableStateOf(false) }
     var cut by remember(preview) { mutableStateOf(false) }
@@ -853,7 +857,7 @@ private fun BottomPanel(
                                     Modifier.clickable(
                                         interactionSource = null,
                                         indication = null,
-                                        onClickLabel = if (expanded) "Weniger anzeigen" else "Ganzen Text anzeigen",
+                                        onClickLabel = stringResource(if (expanded) R.string.bar_show_less else R.string.bar_show_all),
                                     ) { expanded = !expanded }
                                 } else {
                                     Modifier
@@ -886,7 +890,7 @@ private fun BottomPanel(
                         IconButton(onClick = { expanded = !expanded }) {
                             Icon(
                                 painterResource(R.drawable.ic_expand_more),
-                                if (expanded) "Weniger anzeigen" else "Ganzen Text anzeigen",
+                                stringResource(if (expanded) R.string.bar_show_less else R.string.bar_show_all),
                                 Modifier.graphicsLayer { rotationZ = turn },
                                 tint = scheme.onSurfaceVariant,
                             )
@@ -894,7 +898,7 @@ private fun BottomPanel(
                     }
                     if (c.selection != Selection.None) {
                         IconButton(onClick = { c.clearSelection() }) {
-                            Icon(painterResource(R.drawable.ic_close), "Auswahl aufheben", tint = scheme.onSurfaceVariant)
+                            Icon(painterResource(R.drawable.ic_close), stringResource(R.string.bar_clear_selection), tint = scheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -954,24 +958,26 @@ private fun ActionButton(a: OverlayAction) {
     }
 }
 
-private fun barTexts(c: OverlayController): Pair<String, String> {
+private fun barTexts(c: OverlayController, res: Resources): Pair<String, String> {
+    fun str(id: Int) = res.getString(id)
     val pair = when {
-        c.screenshotMissing -> "Kein Bildschirminhalt" to "Erlaube dem Assistenten, Screenshots zu verwenden."
+        c.screenshotMissing -> str(R.string.bar_no_screen_title) to str(R.string.bar_no_screen_text)
         else -> when (val s = c.selection) {
             Selection.None -> when {
-                c.analyzing -> "Bildschirm wird gelesen" to "Einkreisen geht schon jetzt"
-                c.codes.size == 1 -> "1 Code erkannt" to "Antippen oder Text markieren"
-                c.codes.size > 1 -> "${c.codes.size} Codes erkannt" to "Einen antippen oder Text markieren"
-                c.entities.isNotEmpty() -> entitySummary(c.entities) + " erkannt" to "Unterstrichenes antippen"
-                !c.layout.isEmpty -> "Text erkannt" to "Antippen, markieren oder einkreisen"
-                else -> "Kein Text erkannt" to "Der Screenshot lässt sich trotzdem teilen"
+                c.analyzing -> str(R.string.bar_reading) to str(R.string.bar_reading_hint)
+                c.codes.isNotEmpty() ->
+                    res.getQuantityString(R.plurals.bar_codes_found, c.codes.size, c.codes.size) to
+                        str(if (c.codes.size == 1) R.string.bar_code_hint_one else R.string.bar_code_hint_many)
+                c.entities.isNotEmpty() ->
+                    res.getString(R.string.bar_entities_found, entitySummary(c.entities, res)) to str(R.string.bar_entities_hint)
+                !c.layout.isEmpty -> str(R.string.bar_text_found) to str(R.string.bar_text_hint)
+                else -> str(R.string.bar_no_text) to str(R.string.bar_no_text_hint)
             }
-            is Selection.Words -> c.selectedEntity()?.let { e -> entityTitle(e.kind) to entityDisplay(e) } ?: run {
+            is Selection.Words -> c.selectedEntity()?.let { e -> str(entityTitle(e.kind)) to entityDisplay(e) } ?: run {
                 val n = s.ids.size
-                (if (n == 1) "Text · 1 Wort" else "Text · $n Wörter") to
-                    c.layout.textOf(s.ids).replace('\n', ' ')
+                res.getQuantityString(R.plurals.bar_words, n, n) to c.layout.textOf(s.ids).replace('\n', ' ')
             }
-            is Selection.Code -> "${s.code.formatName} · ${typeName(s.code.content)}" to describe(s.code)
+            is Selection.Code -> "${s.code.formatName} · ${str(typeName(s.code.content))}" to describe(s.code, res)
         }
     }
     return (c.feedback ?: pair.first) to pair.second
@@ -984,49 +990,52 @@ private fun entityDisplay(e: TextEntity): String = when (e.kind) {
     else -> e.value
 }
 
+@StringRes
 private fun entityTitle(k: EntityKind) = when (k) {
-    EntityKind.Link -> "Link"
-    EntityKind.Email -> "E-Mail-Adresse"
-    EntityKind.Phone -> "Telefonnummer"
-    EntityKind.Iban -> "IBAN"
+    EntityKind.Link -> R.string.entity_link
+    EntityKind.Email -> R.string.entity_email
+    EntityKind.Phone -> R.string.entity_phone
+    EntityKind.Iban -> R.string.entity_iban
 }
 
-private fun entitySummary(list: List<TextEntity>): String =
+private fun entitySummary(list: List<TextEntity>, res: Resources): String =
     EntityKind.entries.mapNotNull { k ->
         val n = list.count { it.kind == k }
         if (n == 0) {
             null
         } else {
-            when (k) {
-                EntityKind.Link -> if (n == 1) "1 Link" else "$n Links"
-                EntityKind.Email -> if (n == 1) "1 Adresse" else "$n Adressen"
-                EntityKind.Phone -> if (n == 1) "1 Nummer" else "$n Nummern"
-                EntityKind.Iban -> if (n == 1) "1 IBAN" else "$n IBANs"
+            val plural = when (k) {
+                EntityKind.Link -> R.plurals.count_links
+                EntityKind.Email -> R.plurals.count_addresses
+                EntityKind.Phone -> R.plurals.count_numbers
+                EntityKind.Iban -> R.plurals.count_ibans
             }
+            res.getQuantityString(plural, n, n)
         }
     }.joinToString(", ")
 
+@StringRes
 private fun typeName(k: CodeContent) = when (k) {
-    is CodeContent.Link, is CodeContent.OtherUri -> "Link"
-    is CodeContent.Wifi -> "WLAN"
-    is CodeContent.Contact -> "Kontakt"
-    is CodeContent.Email -> "E-Mail"
-    is CodeContent.Phone -> "Telefon"
-    is CodeContent.Sms -> "SMS"
-    is CodeContent.Geo -> "Ort"
-    is CodeContent.Event -> "Termin"
-    is CodeContent.Product -> "Produktnummer"
-    is CodeContent.Text -> "Text"
+    is CodeContent.Link, is CodeContent.OtherUri -> R.string.type_link
+    is CodeContent.Wifi -> R.string.type_wifi
+    is CodeContent.Contact -> R.string.type_contact
+    is CodeContent.Email -> R.string.type_email
+    is CodeContent.Phone -> R.string.type_phone
+    is CodeContent.Sms -> R.string.type_sms
+    is CodeContent.Geo -> R.string.type_place
+    is CodeContent.Event -> R.string.type_event
+    is CodeContent.Product -> R.string.type_product
+    is CodeContent.Text -> R.string.type_text
 }
 
-private fun describe(code: DetectedCode): String = when (val k = code.content) {
+private fun describe(code: DetectedCode, res: Resources): String = when (val k = code.content) {
     is CodeContent.Link -> k.url
     is CodeContent.Wifi -> buildString {
         append(k.ssid)
         if (k.security != "NOPASS") append(" · ").append(k.security)
-        if (k.password != null) append(" · Passwort vorhanden")
+        if (k.password != null) append(" · ").append(res.getString(R.string.code_password_present))
     }
-    is CodeContent.Contact -> k.name ?: "Visitenkarte"
+    is CodeContent.Contact -> k.name ?: res.getString(R.string.code_business_card)
     is CodeContent.Email -> listOfNotNull(k.to, k.subject).joinToString(" · ")
     is CodeContent.Phone -> k.number
     is CodeContent.Sms -> listOfNotNull(k.number, k.body).joinToString(" · ")
@@ -1063,15 +1072,13 @@ private fun MissingScreenshot(c: OverlayController, appear: () -> Float) {
         ElevatedCard(Modifier.padding(24.dp)) {
             Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Icon(painterResource(R.drawable.ic_settings), null, tint = MaterialTheme.colorScheme.primary)
-                Text("Kein Bildschirminhalt", style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.bar_no_screen_title), style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "Encircle hat keinen Screenshot bekommen. Entweder erlaubt die geöffnete App keine Screenshots, " +
-                        "oder der Zugriff ist aus. Aktiviere in den Einstellungen des digitalen Assistenten " +
-                        "„Bildschirm- und App-Daten verwenden“, je nach System auch „Screenshot verwenden“.",
+                    stringResource(R.string.missing_text),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Button(onClick = { if (SystemActions.openAssistSettings(context)) c.finishNow() }) {
-                    Text("Einstellungen öffnen")
+                    Text(stringResource(R.string.missing_open_settings))
                 }
             }
         }

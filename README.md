@@ -65,15 +65,17 @@ Open Encircle: the start screen walks you through three steps, ticks each one of
 Android only gives this entry point to the assistant role, so Encircle replaces your current assistant while it is selected.
 
 <details>
-<summary>GrapheneOS: Encircle stops working after a reboot</summary>
+<summary>Encircle stops working after a reboot or a user switch</summary>
 
-AOSP drops any non-system assistant when a user or profile starts without a speech recognizer configured, which is the default on GrapheneOS. Encircle then shows **Neu verbinden** (reconnect): select *None* and then Encircle again in the assistant settings.
+AOSP unsets any non-system assistant when a user starts without a default speech recognizer, and since Android 17 it never selects a recognizer from a third-party app by itself ([GrapheneOS#9145](https://github.com/GrapheneOS/os-issue-tracker/issues/9145)). Without Google's recognizer, which is the normal state on GrapheneOS and in secondary users, Encircle is therefore signed out at every boot. Secondary users are restarted on every switch, so there it happens each time you switch to them. The assistant role stays assigned, the app shows **Reconnect**: select *None* and then Encircle again in the assistant settings.
 
-To fix it permanently, register Encircle's placeholder recognizer once over adb (`<user>` is the profile's user id from `adb shell pm list users`):
+Only the Settings app or adb may set the recognizer. To fix it permanently, register Encircle's placeholder recognizer once over adb. The setting is per user: `<user>` is the user id from `adb shell pm list users`, and the app shows the complete command under **Fix permanently**.
 
 ```sh
 adb shell settings --user <user> put secure voice_recognition_service de.volcanoproject.encircle/.assist.StubRecognitionService
 ```
+
+Then reconnect once. If you use a real speech recognizer for voice typing, register that one instead; any recognizer works.
 
 </details>
 
