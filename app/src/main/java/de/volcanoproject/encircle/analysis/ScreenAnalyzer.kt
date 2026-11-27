@@ -3,11 +3,14 @@
 
 package de.volcanoproject.encircle.analysis
 
+import android.content.res.Resources
 import android.graphics.Bitmap
 import android.util.Log
+import androidx.annotation.StringRes
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import com.google.android.gms.tasks.Task
+import de.volcanoproject.encircle.R
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
@@ -79,7 +82,8 @@ object ScreenAnalyzer {
         return withContext(Dispatchers.Default) { text.toLayout() }
     }
 
-    suspend fun scanCodes(bitmap: Bitmap): List<DetectedCode> = withContext(Dispatchers.Default) {
+    /** [res] translates format names such as "QR code"; the warm-up passes none and gets English. */
+    suspend fun scanCodes(bitmap: Bitmap, res: Resources? = null): List<DetectedCode> = withContext(Dispatchers.Default) {
         val results = barcodeLock.withLock { barcodeReader.read(bitmap, AndroidRect(), 0) }
         results.mapIndexedNotNull { i, r ->
             val pos = r.position
@@ -91,7 +95,7 @@ object ScreenAnalyzer {
             val matrix = r.format in matrixFormats
             DetectedCode(
                 id = i,
-                formatName = formatName(r.format),
+                formatName = formatName(r.format, res),
                 isMatrix = matrix,
                 raw = raw,
                 corners = if (matrix) corners else padLinear(corners),
@@ -112,12 +116,14 @@ object ScreenAnalyzer {
         )
     }
 
-    private fun formatName(f: BarcodeReader.Format): String = when (f) {
-        BarcodeReader.Format.QR_CODE, BarcodeReader.Format.QR_CODE_MODEL_1, BarcodeReader.Format.QR_CODE_MODEL_2 -> "QR-Code"
-        BarcodeReader.Format.MICRO_QR_CODE -> "Micro-QR"
-        BarcodeReader.Format.RMQR_CODE -> "rMQR-Code"
+    private fun label(res: Resources?, @StringRes id: Int, fallback: String) = res?.getString(id) ?: fallback
+
+    private fun formatName(f: BarcodeReader.Format, res: Resources?): String = when (f) {
+        BarcodeReader.Format.QR_CODE, BarcodeReader.Format.QR_CODE_MODEL_1, BarcodeReader.Format.QR_CODE_MODEL_2 -> label(res, R.string.format_qr, "QR code")
+        BarcodeReader.Format.MICRO_QR_CODE -> label(res, R.string.format_micro_qr, "Micro QR")
+        BarcodeReader.Format.RMQR_CODE -> label(res, R.string.format_rmqr, "rMQR code")
         BarcodeReader.Format.DATA_MATRIX -> "Data Matrix"
-        BarcodeReader.Format.AZTEC, BarcodeReader.Format.AZTEC_CODE, BarcodeReader.Format.AZTEC_RUNE -> "Aztec-Code"
+        BarcodeReader.Format.AZTEC, BarcodeReader.Format.AZTEC_CODE, BarcodeReader.Format.AZTEC_RUNE -> label(res, R.string.format_aztec, "Aztec code")
         BarcodeReader.Format.PDF_417, BarcodeReader.Format.COMPACT_PDF_417 -> "PDF417"
         BarcodeReader.Format.MICRO_PDF_417 -> "MicroPDF417"
         BarcodeReader.Format.MAXI_CODE -> "MaxiCode"
@@ -131,7 +137,7 @@ object ScreenAnalyzer {
         BarcodeReader.Format.CODE_93 -> "Code 93"
         BarcodeReader.Format.ITF, BarcodeReader.Format.ITF_14 -> "ITF"
         BarcodeReader.Format.CODABAR -> "Codabar"
-        else -> if (f.name.startsWith("DATA_BAR")) "GS1 DataBar" else "Barcode"
+        else -> if (f.name.startsWith("DATA_BAR")) "GS1 DataBar" else label(res, R.string.format_barcode, "Barcode")
     }
 
     private fun Text.toLayout(): TextLayout = LayoutBuilder.build(

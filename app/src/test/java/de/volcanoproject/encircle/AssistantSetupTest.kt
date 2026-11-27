@@ -33,7 +33,7 @@ class AssistantSetupTest {
     fun buttonsMeanHomeLongPress() {
         for (launcher in LauncherFamily.entries) {
             val plan = AssistantSetup.plan(Navigation.Buttons, launcher)
-            assertEquals("Home gedrückt halten", plan.title)
+            assertEquals(R.string.plan_buttons_title, plan.title)
             assertFalse(plan.offerButtonNavigation)
         }
         assertEquals(
@@ -41,19 +41,20 @@ class AssistantSetupTest {
             AssistantSetup.plan(Navigation.Buttons, LauncherFamily.Aosp).settingsActions.first(),
         )
         // Circle to Search takes the home long-press on Pixel and Samsung until it is switched off.
-        assertTrue(AssistantSetup.plan(Navigation.Buttons, LauncherFamily.Pixel).howTo.contains("Circle to Search"))
-        assertTrue(AssistantSetup.plan(Navigation.Buttons, LauncherFamily.Samsung).howTo.contains("Circle to Search"))
+        assertEquals(R.string.plan_buttons_pixel_how, AssistantSetup.plan(Navigation.Buttons, LauncherFamily.Pixel).howTo)
+        assertEquals(R.string.plan_buttons_samsung_how, AssistantSetup.plan(Navigation.Buttons, LauncherFamily.Samsung).howTo)
     }
 
     @Test
     fun gesturesDependOnTheLauncher() {
         val pixel = AssistantSetup.plan(Navigation.Gestures, LauncherFamily.Pixel)
         assertEquals(AssistantSetup.ACTION_NAVIGATION_MODE, pixel.settingsActions.first())
-        assertTrue(pixel.howTo.contains("Circle to Search"))
+        assertEquals(R.string.plan_pixel_how, pixel.howTo)
 
         // Launcher3 sends the handle long-press to contextual search only, so AOSP gets the corner swipe.
         val aosp = AssistantSetup.plan(Navigation.Gestures, LauncherFamily.Aosp)
         assertEquals(AssistantSetup.ACTION_GESTURE_NAVIGATION, aosp.settingsActions.first())
+        assertEquals(R.string.plan_corner_title, aosp.title)
         assertTrue(aosp.offerButtonNavigation)
     }
 
