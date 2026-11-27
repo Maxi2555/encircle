@@ -61,11 +61,7 @@ class MainActivity : ComponentActivity() {
                         isDisconnected = isDisconnected,
                         diagnostics = diagnostics,
                         onOpenSettings = { SystemActions.openAssistSettings(this) },
-                        onTry = {
-                            if (!AssistService.launchOverlay()) {
-                                Toast.makeText(this, "ENCIRCLE kann nicht starten", Toast.LENGTH_SHORT).show()
-                            }
-                        },
+                        onTry = ::tryOverlay,
                     )
                 }
             }
@@ -74,9 +70,28 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        refreshStatus()
+    }
+
+    private fun refreshStatus() {
         isAssistant = AssistService.isActive(this)
         isDisconnected = AssistService.isRoleHeldButDisconnected(this)
         diagnostics = Diagnostics.read(this)
+    }
+
+    /**
+     * Opens the overlay. If that fails, the status shown is out of date: refreshing it lets the card say
+     * what to do, unless Encircle is still the assistant and Android just has not connected it yet.
+     */
+    private fun tryOverlay() {
+        if (AssistService.launchOverlay()) return
+        refreshStatus()
+        val message = if (isAssistant) {
+            "Encircle ist noch nicht bereit. Versuche es gleich noch einmal."
+        } else {
+            "Encircle ist nicht mehr als Assistent aktiv"
+        }
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 }
 
